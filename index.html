@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Grayson's App</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Grayson's App">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --blue:#2563eb; --green:#16a34a; --red:#dc2626; --amber:#d97706;
+    --bg:#0f172a; --card:#ffffff; --ink:#0f172a; --muted:#64748b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:linear-gradient(160deg,#1e3a8a,#0f172a 60%);
+    color:var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  #app{width:100%; max-width:520px;}
+  .card{
+    background:var(--card); border-radius:24px; padding:28px 24px;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+  }
+  h1{font-size:1.6rem; margin:0 0 4px; color:var(--blue);}
+  .subtitle{color:var(--muted); margin:0 0 22px; font-size:.95rem;}
+  .subject-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:20px;}
+  .subject-btn{
+    border:none; border-radius:18px; padding:28px 12px; font-size:1.1rem; font-weight:700;
+    cursor:pointer; color:white; display:flex; flex-direction:column; align-items:center; gap:8px;
+    transition:transform .15s ease;
+  }
+  .subject-btn:active{transform:scale(.96);}
+  .subject-btn.math{background:linear-gradient(135deg,#2563eb,#1d4ed8);}
+  .subject-btn.english{background:linear-gradient(135deg,#16a34a,#15803d);}
+  .subject-btn .icon{font-size:2.2rem;}
+  .progress-strip{display:flex; gap:6px; margin:18px 0;}
+  .progress-dot{flex:1; height:8px; border-radius:4px; background:#e2e8f0;}
+  .progress-dot.done{background:var(--blue);}
+  .progress-dot.current{background:var(--amber);}
+  .qtag{
+    display:inline-block; font-size:.75rem; font-weight:700; letter-spacing:.03em;
+    text-transform:uppercase; color:var(--blue); background:#eff6ff; padding:4px 10px;
+    border-radius:999px; margin-bottom:12px;
+  }
+  .question{font-size:1.25rem; font-weight:600; line-height:1.4; margin:0 0 20px;}
+  .options{display:flex; flex-direction:column; gap:10px;}
+  .opt{
+    text-align:left; border:2px solid #e2e8f0; background:#f8fafc; border-radius:14px;
+    padding:14px 16px; font-size:1.05rem; cursor:pointer; color:var(--ink);
+  }
+  .opt:active{transform:scale(.98);}
+  .opt.correct{border-color:var(--green); background:#f0fdf4; color:#166534;}
+  .opt.incorrect{border-color:var(--red); background:#fef2f2; color:#991b1b;}
+  .opt.reveal{border-color:var(--green); background:#f0fdf4; color:#166534;}
+  .feedback{margin-top:16px; font-weight:700; font-size:1.05rem;}
+  .feedback.good{color:var(--green);}
+  .feedback.bad{color:var(--red);}
+  .explain{margin-top:6px; color:var(--muted); font-size:.95rem;}
+  .next-btn{
+    margin-top:18px; width:100%; padding:14px; border:none; border-radius:14px;
+    background:var(--blue); color:white; font-size:1.05rem; font-weight:700; cursor:pointer;
+  }
+  .back-link{background:none; border:none; color:var(--muted); font-size:.9rem; cursor:pointer; padding:0; margin-bottom:10px;}
+  .summary-stat{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eef2f7;}
+  .summary-stat:last-child{border-bottom:none;}
+  .topic-name{font-weight:600;}
+  .tier-badge{font-size:.8rem; color:white; padding:3px 9px; border-radius:999px; font-weight:700;}
+  .t0{background:#94a3b8;} .t1{background:#38bdf8;} .t2{background:#f59e0b;} .t3{background:#a855f7;}
+  .big-emoji{font-size:3rem; text-align:center; margin-bottom:6px;}
+  .footer-note{text-align:center; color:#94a3b8; font-size:.8rem; margin-top:16px;}
+  .dashboard-btn{
+    margin-top:10px; width:100%; padding:12px; border:2px solid #e2e8f0; background:white;
+    border-radius:14px; font-size:.95rem; font-weight:600; color:var(--muted); cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =========================================================================
+   GRAYSON'S APP — adaptive Math & English practice
+   Single-file static app. No build step. Deployable as-is to GitHub Pages.
+   Progress persists locally (localStorage) and, once configured, syncs
+   across devices via Firebase (see SYNC section near the bottom).
+   ========================================================================= */
+
+/* ---------------------------------------------------------------------
+   1. CURRICULUM — topic map, Year 2-4, selective/independent-school pace
+   --------------------------------------------------------------------- */
+const CURRICULUM = {
+  math: {
+    label: "Math",
+    icon: "🚗",
+    topics: [
+      {id:"place_value",  name:"Number & Place Value"},
+      {id:"add_sub",      name:"Addition & Subtraction"},
+      {id:"mult_div",     name:"Multiplication & Division"},
+      {id:"fractions",    name:"Fractions & Decimals"},
+      {id:"measurement",  name:"Measurement, Time & Money"},
+      {id:"geometry",     name:"Shape, Angles & Position"},
+      {id:"statistics",   name:"Data & Statistics"},
+      {id:"reasoning",    name:"Word Problems & Reasoning"},
+    ]
+  },
+  english: {
+    label: "English",
+    icon: "📚",
+    topics: [
+      {id:"word_classes",       name:"Word Classes"},
+      {id:"sentence_structure", name:"Sentences & Clauses"},
+      {id:"punctuation",        name:"Punctuation"},
+      {id:"tenses",             name:"Verb Tenses"},
+      {id:"vocabulary",         name:"Vocabulary & Spelling"},
+      {id:"composition",        name:"Composition & Style"},
+    ]
+  }
+};
+const TIER_LABELS = ["Foundation","Year 2/3","Year 3/4","Year 4 Extension"];
+
+/* ---------------------------------------------------------------------
+   2. HELPERS
+   --------------------------------------------------------------------- */
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function pick(arr){ return arr[randInt(0,arr.length-1)]; }
+function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=randInt(0,i);[a[i],a[j]]=[a[j],a[i]];} return a; }
+// Builds a 4-option MCQ from a correct value + distractor pool, returns {options, correctIndex}
+function makeMCQ(correct, distractorPool, fmt=(x)=>String(x)){
+  const pool = distractorPool.filter(d => fmt(d) !== fmt(correct));
+  const chosen = [];
+  while(chosen.length < 3 && pool.length){
+    const idx = randInt(0,pool.length-1);
+    const val = pool.splice(idx,1)[0];
+    if(!chosen.some(c=>fmt(c)===fmt(val))) chosen.push(val);
+  }
+  // If the pool didn't have 3 distinct distractors (common for binary true/false-
+  // style items), only pad with numeric neighbors when correct is actually a
+  // number — never fabricate nonsense text options for string answers.
+  if(typeof correct === "number"){
+    let offset = 1;
+    while(chosen.length < 3 && offset < 50){
+      for(const sign of [1,-1]){
+        if(chosen.length>=3) break;
+        const filler = correct + sign*offset;
+        if(!chosen.some(c=>fmt(c)===fmt(filler)) && fmt(filler)!==fmt(correct) && filler>=0){
+          chosen.push(filler);
+        }
+      }
+      offset++;
+    }
+  }
+  const all = shuffle([correct, ...chosen]);
+  return { options: all.map(fmt), correctIndex: all.findIndex(v=>fmt(v)===fmt(correct)) };
+}
+
+/* ---------------------------------------------------------------------
+   3. QUESTION GENERATORS — one function per (topic, tier), procedurally
+      generated so there's effectively unlimited practice, not a fixed
+      question bank that runs out.
+   --------------------------------------------------------------------- */
+const G = { math:{}, english:{} };
+
+// ---- MATH: Place Value ----
+G.math.place_value = [
+  () => { // tier0: numbers to 100, tens/ones
+    const n = randInt(11,99);
+    const correct = Math.floor(n/10)*10;
+    const {options,correctIndex} = makeMCQ(correct, [correct-10,correct+10,correct+1,n]);
+    return {q:`In the number ${n}, what is the value of the tens digit?`, options, correctIndex,
+      explain:`${n} = ${Math.floor(n/10)} tens and ${n%10} ones, so the tens digit is worth ${correct}.`};
+  },
+  () => { // tier1: numbers to 1000, rounding to nearest 10
+    const n = randInt(100,999);
+    const correct = Math.round(n/10)*10;
+    const {options,correctIndex} = makeMCQ(correct, [correct-10,correct+10,n]);
+    return {q:`Round ${n} to the nearest 10.`, options, correctIndex, explain:`${n} rounds to ${correct}.`};
+  },
+  () => { // tier2: numbers to 10,000, rounding to nearest 100, negatives
+    const n = randInt(1000,9999);
+    const correct = Math.round(n/100)*100;
+    const {options,correctIndex} = makeMCQ(correct, [correct-100,correct+100,n]);
+    return {q:`Round ${n} to the nearest 100.`, options, correctIndex, explain:`${n} rounds to ${correct}.`};
+  },
+  () => { // tier3: ordering negative numbers / rounding to 1000
+    const n = randInt(1000,99999);
+    const correct = Math.round(n/1000)*1000;
+    const {options,correctIndex} = makeMCQ(correct, [correct-1000,correct+1000,n]);
+    return {q:`Round ${n} to the nearest 1,000.`, options, correctIndex, explain:`${n} rounds to ${correct}.`};
+  }
+];
+
+// ---- MATH: Addition & Subtraction ----
+G.math.add_sub = [
+  () => { const a=randInt(10,49), b=randInt(10,49-a%10<10?9:9); const correct=a+b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-1,correct+1]);
+    return {q:`${a} + ${b} = ?`, options, correctIndex, explain:`${a} + ${b} = ${correct}.`}; },
+  () => { const a=randInt(20,89), b=randInt(15,79); const useSub = Math.random()<0.5;
+    const correct = useSub ? Math.abs(a-b) : a+b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-1,correct+1]);
+    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
+      explain:`Answer: ${correct}.`}; },
+  () => { const a=randInt(100,899), b=randInt(100,899); const useSub = Math.random()<0.5;
+    const correct = useSub ? Math.abs(a-b) : a+b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-100,correct+100]);
+    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
+      explain:`Answer: ${correct}.`}; },
+  () => { const a=randInt(1000,8999), b=randInt(100,999); const useSub = Math.random()<0.5;
+    const correct = useSub ? a-b : a+b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,correct-10,correct+10]);
+    return {q: useSub?`${a} - ${b} = ?`:`${a} + ${b} = ?`, options, correctIndex, explain:`Answer: ${correct}.`}; }
+];
+
+// ---- MATH: Multiplication & Division ----
+G.math.mult_div = [
+  () => { const table=pick([2,5,10]); const n=randInt(1,12); const correct=table*n;
+    const {options,correctIndex}=makeMCQ(correct,[correct-table,correct+table,correct+1]);
+    return {q:`${table} × ${n} = ?`, options, correctIndex, explain:`${table} × ${n} = ${correct}.`}; },
+  () => { const table=randInt(2,12); const n=randInt(1,12); const isDiv=Math.random()<0.4;
+    if(isDiv){ const correct=n; const product=table*n;
+      const {options,correctIndex}=makeMCQ(correct,[correct-1,correct+1,correct+2]);
+      return {q:`${product} ÷ ${table} = ?`, options, correctIndex, explain:`${product} ÷ ${table} = ${correct}.`}; }
+    const correct=table*n;
+    const {options,correctIndex}=makeMCQ(correct,[correct-table,correct+table,correct+1]);
+    return {q:`${table} × ${n} = ?`, options, correctIndex, explain:`${table} × ${n} = ${correct}.`}; },
+  () => { const a=randInt(11,49), b=randInt(2,9); const correct=a*b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-b,correct+b,correct-a]);
+    return {q:`${a} × ${b} = ?`, options, correctIndex, explain:`${a} × ${b} = ${correct}.`}; },
+  () => { const divisor=randInt(3,9); const quotient=randInt(4,15); const rem=randInt(1,divisor-1);
+    const dividend=divisor*quotient+rem; const correct=`${quotient} r${rem}`;
+    const wrongs=[`${quotient} r${(rem+1)%divisor}`,`${quotient+1} r${rem}`,`${quotient-1} r${rem}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`${dividend} ÷ ${divisor} = ? (give remainder)`, options, correctIndex,
+      explain:`${divisor} × ${quotient} = ${divisor*quotient}, remainder ${rem}.`}; }
+];
+
+// ---- MATH: Fractions & Decimals ----
+G.math.fractions = [
+  () => { const denom=pick([2,4]); const correct=`1/${denom}`;
+    const wrongs=[`1/${denom===2?4:2}`,`${denom-1}/${denom}`,`2/${denom}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs);
+    return {q:`A shape is split into ${denom} equal parts and 1 part is shaded. What fraction is shaded?`,
+      options, correctIndex, explain:`1 shaded part out of ${denom} equal parts = 1/${denom}.`}; },
+  () => { const denom=pick([2,3,4,5]); const mult=randInt(2,4);
+    const correct=`${1*mult}/${denom*mult}`;
+    const wrongs=[`1/${denom}`,`${mult}/${denom}`,`${1*mult}/${denom+mult}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs);
+    return {q:`Which fraction is equivalent to 1/${denom}?`, options, correctIndex,
+      explain:`Multiply top and bottom by ${mult}: 1/${denom} = ${1*mult}/${denom*mult}.`}; },
+  () => { const denom=pick([2,4,5,10]); const whole=randInt(20,100); const correct=(whole/denom);
+    const {options,correctIndex}=makeMCQ(correct,[correct+denom,correct-denom,whole/2]);
+    return {q:`What is 1/${denom} of ${whole}?`, options, correctIndex, explain:`${whole} ÷ ${denom} = ${correct}.`}; },
+  () => { const tenths=randInt(1,9); const correct=`0.${tenths}`;
+    const wrongs=[`${tenths}.0`,`0.0${tenths}`,`1.${tenths}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs);
+    return {q:`Write ${tenths}/10 as a decimal.`, options, correctIndex, explain:`${tenths}/10 = 0.${tenths}.`}; }
+];
+
+// ---- MATH: Measurement, Time & Money ----
+G.math.measurement = [
+  () => { const h=randInt(1,12); const half=Math.random()<0.5;
+    const correct = half ? `Half past ${h}` : `${h} o'clock`;
+    const wrongs = [`Half past ${h===12?1:h+1}`,`${h===12?1:h+1} o'clock`,`Quarter past ${h}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs);
+    return {q:`The clock shows ${h}:${half?"30":"00"}. What time is this?`, options, correctIndex,
+      explain:`${h}:${half?"30":"00"} is "${correct}".`}; },
+  () => { const pounds=randInt(1,9), pence=pick([0,25,50,75]); const correct=`£${pounds}.${pence.toString().padStart(2,"0")}`;
+    const wrongs=[`£${pounds+1}.${pence.toString().padStart(2,"0")}`,`£${pounds}.${(100-pence)===100?"00":(100-pence)}`,`£${pounds}.${pence===0?"50":"00"}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`I have coins worth £${pounds}.${pence.toString().padStart(2,"0")} in total. How is that written?`,
+      options, correctIndex, explain:`Written as ${correct}.`}; },
+  () => { const h=randInt(1,23); const m=pick([0,15,30,45]); const period = h<12?"am":"pm";
+    const h12 = h%12===0?12:h%12; const correct=`${h12}:${m.toString().padStart(2,"0")} ${period}`;
+    const wrongs=[`${h12}:${m.toString().padStart(2,"0")} ${period==="am"?"pm":"am"}`,`${h12===12?1:h12+1}:${m.toString().padStart(2,"0")} ${period}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Convert ${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")} (24-hour) to 12-hour time.`,
+      options, correctIndex, explain:`${h}:${m} in 24hr = ${correct}.`}; },
+  () => { const l=randInt(3,12), w=randInt(2,9); const correct=2*(l+w);
+    const {options,correctIndex}=makeMCQ(correct,[l*w,correct+2,correct-2]);
+    return {q:`A rectangle is ${l}cm by ${w}cm. What is its perimeter?`, options, correctIndex,
+      explain:`Perimeter = 2×(${l}+${w}) = ${correct}cm.`}; }
+];
+
+// ---- MATH: Geometry ----
+const SHAPES2D = [["triangle",3],["square",4],["pentagon",5],["hexagon",6],["rectangle",4],["octagon",8]];
+G.math.geometry = [
+  () => { const [name,sides]=pick(SHAPES2D); const correct=sides;
+    const {options,correctIndex}=makeMCQ(correct,[sides-1,sides+1,sides+2]);
+    return {q:`How many sides does a ${name} have?`, options, correctIndex, explain:`A ${name} has ${sides} sides.`}; },
+  () => { const shapes=[["cube",6,12,8],["cuboid",6,12,8],["sphere",0,0,0],["cylinder",2,0,0]];
+    const [name,faces]=pick(shapes); const correct=faces;
+    const {options,correctIndex}=makeMCQ(correct,[faces+1,faces-1||1,faces+2]);
+    return {q:`How many faces does a ${name} have?`, options, correctIndex, explain:`A ${name} has ${faces} faces.`}; },
+  () => { const angle=pick(["acute","right","obtuse","reflex"]); const desc={
+      acute:"less than 90°", right:"exactly 90°", obtuse:"between 90° and 180°", reflex:"more than 180°"};
+    const wrongOpts = Object.keys(desc).filter(k=>k!==angle);
+    const {options,correctIndex}=makeMCQ(desc[angle], wrongOpts.map(k=>desc[k]));
+    return {q:`What describes a ${angle} angle?`, options, correctIndex, explain:`A ${angle} angle is ${desc[angle]}.`}; },
+  () => { const x=randInt(1,6), y=randInt(1,6); const correct=`(${x}, ${y})`;
+    const wrongs=[`(${y}, ${x})`,`(${x+1}, ${y})`,`(${x}, ${y+1})`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(v)=>String(v));
+    return {q:`A point is ${x} across and ${y} up from the origin. What are its coordinates?`,
+      options, correctIndex, explain:`Coordinates are written (across, up) = ${correct}.`}; }
+];
+
+// ---- MATH: Statistics ----
+G.math.statistics = [
+  () => { // pictogram: 4 items so options are always 4 unique labels
+    const vals=[randInt(2,9),randInt(2,9),randInt(2,9),randInt(2,9)];
+    const max=Math.max(...vals);
+    const labels=["Item 1","Item 2","Item 3","Item 4"];
+    const correctLabel = labels[vals.indexOf(max)];
+    const shuffled = shuffle(labels);
+    return {q:`A pictogram shows: Item 1 = ${vals[0]} symbols, Item 2 = ${vals[1]} symbols, Item 3 = ${vals[2]} symbols, Item 4 = ${vals[3]} symbols. Which item has the most?`,
+      options: shuffled, correctIndex: shuffled.indexOf(correctLabel),
+      explain:`${correctLabel} has the most, with ${max} symbols.`}; },
+  () => { const vals=[randInt(3,10),randInt(3,10),randInt(3,10),randInt(3,10)];
+    const total=vals.reduce((a,b)=>a+b,0);
+    const {options,correctIndex}=makeMCQ(total,[total-2,total+2,total-1]);
+    return {q:`A bar chart shows 4 bars with values ${vals.join(", ")}. What is the total?`, options, correctIndex,
+      explain:`${vals.join(" + ")} = ${total}.`}; },
+  () => { const vals=[2,3,3,4,5,3]; const correct=3;
+    const {options,correctIndex}=makeMCQ(correct,[2,4,5]);
+    return {q:`In the data set ${vals.join(", ")}, which number appears most often (the mode)?`, options, correctIndex,
+      explain:`3 appears most often, so the mode is 3.`}; },
+  () => { const vals=[randInt(1,5),randInt(6,10),randInt(11,15)]; const range=Math.max(...vals)-Math.min(...vals);
+    const {options,correctIndex}=makeMCQ(range,[range+1,range-1,Math.max(...vals)]);
+    return {q:`A data set has values ${vals.join(", ")}. What is the range (highest minus lowest)?`, options, correctIndex,
+      explain:`${Math.max(...vals)} - ${Math.min(...vals)} = ${range}.`}; }
+];
+
+// ---- MATH: Reasoning / word problems ----
+G.math.reasoning = [
+  () => { const price=randInt(2,9); const qty=randInt(2,6); const correct=price*qty;
+    const {options,correctIndex}=makeMCQ(correct,[correct+price,correct-price,price+qty]);
+    return {q:`Toy cars cost £${price} each. How much for ${qty} toy cars?`, options, correctIndex,
+      explain:`${qty} × £${price} = £${correct}.`}; },
+  () => { const start=randInt(20,60); const spent=randInt(5,start-5); const correct=start-spent;
+    const {options,correctIndex}=makeMCQ(correct,[correct+5,correct-5,start]);
+    return {q:`You have £${start}. You spend £${spent} on a model kit. How much is left?`, options, correctIndex,
+      explain:`£${start} - £${spent} = £${correct}.`}; },
+  () => { const rows=randInt(3,9), cols=randInt(3,9); const correct=rows*cols;
+    const {options,correctIndex}=makeMCQ(correct,[correct+rows,correct-cols,rows+cols]);
+    return {q:`Lego bricks are arranged in ${rows} rows of ${cols}. How many bricks in total?`, options, correctIndex,
+      explain:`${rows} × ${cols} = ${correct}.`}; },
+  () => { const a=randInt(15,40), b=randInt(10,30), c=randInt(5,20); const correct=a+b-c;
+    const {options,correctIndex}=makeMCQ(correct,[a+b+c,correct+2,correct-2]);
+    return {q:`A car park has ${a} cars. ${b} more arrive, then ${c} leave. How many cars now?`, options, correctIndex,
+      explain:`${a} + ${b} - ${c} = ${correct}.`}; }
+];
+
+// ---- ENGLISH: Word Classes ----
+G.english.word_classes = [
+  () => { const nouns=["car","dog","engine","castle","planet"]; const verbs=["run","build","jump","design","explore"];
+    const isNoun=Math.random()<0.5; const word=isNoun?pick(nouns):pick(verbs);
+    const correct=isNoun?"Noun":"Verb";
+    const {options,correctIndex}=makeMCQ(correct,["Noun","Verb","Adjective"]);
+    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}.`}; },
+  () => { const adjs=["shiny","enormous","curious","rusty"]; const advs=["quickly","carefully","loudly","bravely"];
+    const isAdj=Math.random()<0.5; const word=isAdj?pick(adjs):pick(advs);
+    const correct=isAdj?"Adjective":"Adverb";
+    const {options,correctIndex}=makeMCQ(correct,["Adjective","Adverb","Noun"]);
+    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is an ${correct.toLowerCase()}.`}; },
+  () => { const pronouns=["he","she","it","they","we"]; const conjunctions=["and","but","because","although"];
+    const isPro=Math.random()<0.5; const word=isPro?pick(pronouns):pick(conjunctions);
+    const correct=isPro?"Pronoun":"Conjunction";
+    const {options,correctIndex}=makeMCQ(correct,["Pronoun","Conjunction","Preposition"]);
+    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}.`}; },
+  () => { const preps=["under","beside","through","between"]; const properNouns=["London","Grayson","Tuesday","Mars"];
+    const isPrep=Math.random()<0.5; const word=isPrep?pick(preps):pick(properNouns);
+    const correct=isPrep?"Preposition":"Proper noun";
+    const {options,correctIndex}=makeMCQ(correct,["Preposition","Proper noun","Common noun"]);
+    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}.`}; }
+];
+
+// ---- ENGLISH: Sentence Structure ----
+G.english.sentence_structure = [
+  () => { const complete=["The dog barked loudly.","Grayson built a tower."]; const fragment=["Running down the street","Because it was raining"];
+    const isComplete=Math.random()<0.5; const text=isComplete?pick(complete):pick(fragment);
+    const correct=isComplete?"Complete sentence":"Sentence fragment";
+    const {options,correctIndex}=makeMCQ(correct,["Complete sentence","Sentence fragment"]);
+    return {q:`Is this a complete sentence or a fragment? "${text}"`, options, correctIndex,
+      explain:`"${text}" is a ${correct.toLowerCase()}.`}; },
+  () => { const simple=["The car stopped.","She likes science."]; const compound=["The car stopped, and the driver got out.","She likes science, but she loves art more."];
+    const isSimple=Math.random()<0.5; const text=isSimple?pick(simple):pick(compound);
+    const correct=isSimple?"Simple sentence":"Compound sentence";
+    const {options,correctIndex}=makeMCQ(correct,["Simple sentence","Compound sentence"]);
+    return {q:`Is this a simple or compound sentence? "${text}"`, options, correctIndex,
+      explain:`It's a ${correct.toLowerCase()} — ${isSimple?"one idea":"two ideas joined by a conjunction"}.`}; },
+  () => { const sentences=["Although it was raining, we went outside.","When the bell rang, everyone stopped."];
+    const text=pick(sentences); const correct="Subordinate clause";
+    const {options,correctIndex}=makeMCQ(correct,["Subordinate clause","Main clause","Compound sentence"]);
+    return {q:`In "${text}", what type of clause comes first?`, options, correctIndex,
+      explain:`It starts with a subordinate clause (it can't stand alone as a sentence).`}; },
+  () => { const a="The rocket launched."; const b="Everyone cheered.";
+    const correct=`${a.slice(0,-1)}, and ${b.toLowerCase()}`;
+    const wrongs=[`${a} ${b}`,`${a.slice(0,-1)} but ${b.toLowerCase()}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which correctly joins these into one compound sentence? "${a}" + "${b}"`, options, correctIndex,
+      explain:`Join with a comma and "and": "${correct}"`}; }
+];
+
+// ---- ENGLISH: Punctuation ----
+G.english.punctuation = [
+  () => { const text="the dog ran fast"; const correct="The dog ran fast.";
+    const wrongs=["the dog ran fast.","The dog ran fast","The Dog ran fast."];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which is correctly punctuated? (original: "${text}")`, options, correctIndex,
+      explain:`Sentences start with a capital letter and end with a full stop: "${correct}"`}; },
+  () => { const items=["apples","pears","bananas"];
+    const correct=`I bought apples, pears and bananas.`;
+    const wrongs=[`I bought apples pears and bananas.`,`I bought apples, pears, and, bananas.`,`I bought apples pears, and bananas`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which sentence uses commas correctly in a list?`, options, correctIndex,
+      explain:`Commas separate list items: "${correct}"`}; },
+  () => { const isPossessive=Math.random()<0.5;
+    const correct = isPossessive ? "Grayson's car" : "don't";
+    const wrongs = isPossessive ? ["Graysons' car","Graysons car"] : ["dont","do'nt"];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q: isPossessive ? `Which correctly shows the car belongs to Grayson?` : `Which correctly contracts "do not"?`,
+      options, correctIndex, explain:`Correct form: "${correct}".`}; },
+  () => { const correct=`"I found it!" said Grayson.`;
+    const wrongs=[`I found it! said Grayson.`,`"I found it! said Grayson."`,`"I found it"! said Grayson.`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which correctly punctuates the direct speech?`, options, correctIndex,
+      explain:`Speech marks wrap exactly what's said, punctuation goes inside: ${correct}`}; }
+];
+
+// ---- ENGLISH: Verb Tenses ----
+G.english.tenses = [
+  () => { const pairs=[["walk","walked"],["jump","jumped"],["build","built"],["run","ran"],["go","went"]];
+    const [present,past]=pick(pairs); const correct=past;
+    const {options,correctIndex}=makeMCQ(correct,[present, present+"ed", past+"ed"]);
+    return {q:`What is the past tense of "${present}"?`, options, correctIndex, explain:`"${present}" → "${correct}".`}; },
+  () => { const verbs=["build","design","explore"]; const v=pick(verbs); const correct=`${v}ing`;
+    const {options,correctIndex}=makeMCQ(correct,[v, v+"ed", v+"s"]);
+    return {q:`Which shows the action happening right now (progressive tense) for "${v}"? "Grayson is ___ a tower."`,
+      options, correctIndex, explain:`Progressive tense uses "is/are + verb-ing": "${correct}"`}; },
+  () => { const verbs=["explore","build","paint"]; const v=pick(verbs); const correct=`will ${v}`;
+    const {options,correctIndex}=makeMCQ(correct,[`${v}ed`,`is ${v}ing`,v]);
+    return {q:`Which shows the future tense for "${v}"? "Tomorrow, Grayson ___ a rocket."`, options, correctIndex,
+      explain:`Future tense: "will + verb": "${correct}"`}; },
+  () => { const pairs=[["walk","walked"],["build","built"],["see","seen"]]; const [present,past]=pick(pairs);
+    const correct=`has ${past}`;
+    const {options,correctIndex}=makeMCQ(correct,[`have ${present}`,`is ${present}ing`,past]);
+    return {q:`Which shows the present perfect tense? "Grayson ___ the whole model."`, options, correctIndex,
+      explain:`Present perfect: "has/have + past participle": "${correct}"`}; }
+];
+
+// ---- ENGLISH: Vocabulary & Spelling ----
+G.english.vocabulary = [
+  () => { const pairs=[["happy","joyful"],["big","enormous"],["fast","quick"],["smart","clever"]];
+    const [word,syn]=pick(pairs); const correct=syn;
+    const {options,correctIndex}=makeMCQ(correct,["sad","small","slow"]);
+    return {q:`Which word means the same as "${word}"?`, options, correctIndex, explain:`"${syn}" is a synonym for "${word}".`}; },
+  () => { const pairs=[["hot","cold"],["fast","slow"],["big","small"],["happy","sad"]];
+    const [word,ant]=pick(pairs); const correct=ant;
+    const {options,correctIndex}=makeMCQ(correct,["huge","quick","joyful"]);
+    return {q:`Which word means the opposite of "${word}"?`, options, correctIndex, explain:`"${ant}" is an antonym for "${word}".`}; },
+  () => { const roots=[["un","happy","not happy"],["re","build","build again"],["dis","like","not like"]];
+    const [prefix,root,meaning]=pick(roots); const correct=`${prefix}${root}`;
+    const {options,correctIndex}=makeMCQ(correct,[`${root}${prefix}`,`${root}ing`,root]);
+    return {q:`Add a prefix to "${root}" to mean "${meaning}".`, options, correctIndex,
+      explain:`"${prefix}" + "${root}" = "${correct}" (${meaning}).`}; },
+  () => { const pairs=[["their","there"],["to","too"],["hear","here"],["write","right"]];
+    const [a,b]=pick(pairs); const useA=Math.random()<0.5; const word=useA?a:b;
+    const correct = word; // just testing recognition of the pair as homophones
+    const {options,correctIndex}=makeMCQ(`${a} / ${b}`,[`${a} / ${a}`,`${b} / ${b}`]);
+    return {q:`"${word}" has a homophone (sounds the same, different spelling & meaning). Which pair is correct?`,
+      options, correctIndex, explain:`"${a}" and "${b}" are homophones.`}; }
+];
+
+// ---- ENGLISH: Composition & Style ----
+G.english.composition = [
+  () => { const plain=["big","good","said","nice"]; const better={big:"enormous",good:"magnificent",said:"exclaimed",nice:"delightful"};
+    const word=pick(plain); const correct=better[word];
+    const {options,correctIndex}=makeMCQ(correct,["ok","fine","stuff"]);
+    return {q:`Which is the more powerful, descriptive word to replace "${word}"?`, options, correctIndex,
+      explain:`"${correct}" is more vivid and precise than "${word}".`}; },
+  () => { const openers=["Suddenly, the engine roared to life.","Deep in the workshop, gears began to turn."];
+    const weak=["The car started.","There was a car in the workshop."];
+    const correct=pick(openers);
+    const {options,correctIndex}=makeMCQ(correct,[pick(weak),pick(weak)]);
+    return {q:`Which is the more engaging sentence opener?`, options, correctIndex,
+      explain:`"${correct}" hooks the reader with vivid detail or action.`}; },
+  () => { const a="The rain poured down."; const b="We stayed inside and read books.";
+    const correct=`Because the rain poured down, we stayed inside and read books.`;
+    const wrongs=[`The rain poured down we stayed inside and read books.`,`We stayed inside and read books the rain poured down.`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which best combines these two ideas showing cause and effect? "${a}" + "${b}"`, options, correctIndex,
+      explain:`"${correct}" clearly links cause and effect with "Because".`}; },
+  () => { const plainNoun="car"; const expanded="the rusty, roaring vintage car";
+    const {options,correctIndex}=makeMCQ(expanded,["the car","a car that is a car","car, car, car"]);
+    return {q:`Which is the best expanded noun phrase for "${plainNoun}"?`, options, correctIndex,
+      explain:`"${expanded}" adds vivid, specific detail.`}; }
+];
+
+/* ---------------------------------------------------------------------
+   4. STATE & PERSISTENCE (localStorage now; Firebase hook below)
+   --------------------------------------------------------------------- */
+const STORAGE_KEY = "graysons_app_state_v1";
+
+function defaultState(){
+  const s = { math:{topics:{}}, english:{topics:{}}, history:[] };
+  for(const subj of ["math","english"]){
+    for(const t of CURRICULUM[subj].topics){
+      s[subj].topics[t.id] = { tier:1, streak:0, attempts:0, correct:0, needsReview:false, roundsSince:0 };
+    }
+  }
+  return s;
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return defaultState();
+}
+function saveState(state){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  cloudSync(state); // no-op until Firebase is configured, see SYNC section
+}
+
+let STATE = loadState();
+
+/* ---------------------------------------------------------------------
+   5. ADAPTIVE ENGINE
+   --------------------------------------------------------------------- */
+function pickTopicOrder(subject){
+  const topics = CURRICULUM[subject].topics.map(t=>t.id);
+  const s = STATE[subject].topics;
+  // Every topic gets covered at least once per round (no-gaps guarantee).
+  // Extra slots (to reach 10) go to topics flagged needsReview, then to
+  // whichever topics have gone the most rounds without being seen.
+  const base = shuffle(topics);
+  const extrasNeeded = 10 - base.length;
+  const ranked = [...topics].sort((a,b)=>{
+    const sa=s[a], sb=s[b];
+    if(sa.needsReview !== sb.needsReview) return sa.needsReview ? -1 : 1;
+    return sb.roundsSince - sa.roundsSince;
+  });
+  const extras = [];
+  for(let i=0;i<extrasNeeded;i++){ extras.push(ranked[i % ranked.length]); }
+  return shuffle([...base, ...extras]).slice(0,10);
+}
+
+function buildRound(subject){
+  const order = pickTopicOrder(subject);
+  return order.map(topicId => {
+    const tier = STATE[subject].topics[topicId].tier;
+    const gens = G[subject][topicId];
+    const q = gens[Math.min(tier, gens.length-1)]();
+    return { topicId, tier, ...q };
+  });
+}
+
+function recordAnswer(subject, topicId, wasCorrect){
+  const t = STATE[subject].topics[topicId];
+  t.attempts++;
+  if(wasCorrect){
+    t.correct++; t.streak++;
+    if(t.streak >= 2 && t.tier < 3){ t.tier++; t.streak = 0; t.needsReview=false; }
+    if(t.streak >= 2 && t.tier === 3){ t.needsReview=false; }
+  } else {
+    t.streak = 0;
+    if(t.tier > 0) t.tier--;
+    t.needsReview = true;
+  }
+  for(const id in STATE[subject].topics){ STATE[subject].topics[id].roundsSince++; }
+  t.roundsSince = 0;
+  saveState(STATE);
+}
+
+/* ---------------------------------------------------------------------
+   6. SYNC (Firebase) — stub until a free Firebase project is connected.
+   To activate: paste your Firebase config below and set SYNC_ENABLED=true.
+   This keeps Mac + iPad progress in sync. Until then, the app works fine
+   locally on each device via localStorage.
+   --------------------------------------------------------------------- */
+const SYNC_ENABLED = false;
+const FIREBASE_CONFIG = null; // { apiKey:"...", projectId:"...", ... }
+
+function cloudSync(state){
+  if(!SYNC_ENABLED) return;
+  // Firebase Firestore write would go here once configured.
+}
+function cloudPull(){
+  if(!SYNC_ENABLED) return Promise.resolve(null);
+  return Promise.resolve(null); // Firestore read would go here
+}
+
+/* ---------------------------------------------------------------------
+   7. UI
+   --------------------------------------------------------------------- */
+const app = document.getElementById("app");
+let currentRound = null, currentIndex = 0, currentSubject = null, roundResults = [];
+
+function renderHome(){
+  app.innerHTML = `
+    <div class="card">
+      <h1>🚀 Grayson's App</h1>
+      <p class="subtitle">Pick a subject to start today's set of 10 questions.</p>
+      <div class="subject-grid">
+        <button class="subject-btn math" onclick="startRound('math')">
+          <span class="icon">🚗</span> Math
+        </button>
+        <button class="subject-btn english" onclick="startRound('english')">
+          <span class="icon">📚</span> English
+        </button>
+      </div>
+      <button class="dashboard-btn" onclick="renderDashboard()">View progress</button>
+      <p class="footer-note">Runs fully offline once loaded. No account needed to play.</p>
+    </div>`;
+}
+
+function startRound(subject){
+  currentSubject = subject;
+  currentRound = buildRound(subject);
+  currentIndex = 0;
+  roundResults = [];
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const total = currentRound.length;
+  const q = currentRound[currentIndex];
+  const dots = currentRound.map((_,i)=>{
+    let cls = "progress-dot";
+    if(i < currentIndex) cls += " done";
+    else if(i === currentIndex) cls += " current";
+    return `<div class="${cls}"></div>`;
+  }).join("");
+  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
+  app.innerHTML = `
+    <div class="card">
+      <button class="back-link" onclick="renderHome()">← Exit</button>
+      <div class="progress-strip">${dots}</div>
+      <span class="qtag">${topicName} · Q${currentIndex+1} of ${total}</span>
+      <p class="question">${q.q}</p>
+      <div class="options" id="options">
+        ${q.options.map((opt,i)=>`<button class="opt" data-i="${i}" onclick="answer(${i})">${opt}</button>`).join("")}
+      </div>
+      <div id="feedbackZone"></div>
+    </div>`;
+}
+
+function answer(i){
+  const q = currentRound[currentIndex];
+  const wasCorrect = i === q.correctIndex;
+  document.querySelectorAll(".opt").forEach((btn,idx)=>{
+    btn.onclick = null;
+    if(idx === q.correctIndex) btn.classList.add("correct");
+    else if(idx === i) btn.classList.add("incorrect");
+  });
+  roundResults.push({topicId:q.topicId, correct:wasCorrect});
+  recordAnswer(currentSubject, q.topicId, wasCorrect);
+  const fb = document.getElementById("feedbackZone");
+  fb.innerHTML = `
+    <div class="feedback ${wasCorrect?"good":"bad"}">${wasCorrect?"Nice one! ✅":"Not quite — here's why:"}</div>
+    <div class="explain">${q.explain}</div>
+    <button class="next-btn" onclick="nextQuestion()">${currentIndex+1 < currentRound.length ? "Next question" : "See results"}</button>`;
+}
+
+function nextQuestion(){
+  currentIndex++;
+  if(currentIndex >= currentRound.length){ renderSummary(); return; }
+  renderQuestion();
+}
+
+function renderSummary(){
+  const correctCount = roundResults.filter(r=>r.correct).length;
+  const total = roundResults.length;
+  const pct = Math.round((correctCount/total)*100);
+  const emoji = pct >= 80 ? "🏆" : pct >= 50 ? "👍" : "💪";
+  app.innerHTML = `
+    <div class="card">
+      <div class="big-emoji">${emoji}</div>
+      <h1 style="text-align:center;">${correctCount} / ${total} correct</h1>
+      <p class="subtitle" style="text-align:center;">${CURRICULUM[currentSubject].label} round complete.</p>
+      <button class="next-btn" onclick="startRound('${currentSubject}')">Play another round</button>
+      <button class="dashboard-btn" onclick="renderDashboard()">View progress</button>
+      <button class="back-link" style="margin-top:10px;" onclick="renderHome()">← Home</button>
+    </div>`;
+}
+
+function renderDashboard(){
+  const sections = ["math","english"].map(subject=>{
+    const rows = CURRICULUM[subject].topics.map(t=>{
+      const s = STATE[subject].topics[t.id];
+      const acc = s.attempts ? Math.round((s.correct/s.attempts)*100) : null;
+      return `<div class="summary-stat">
+        <span class="topic-name">${t.name}</span>
+        <span><span class="tier-badge t${s.tier}">${TIER_LABELS[s.tier]}</span> ${acc!==null?` · ${acc}%`:""}</span>
+      </div>`;
+    }).join("");
+    return `<h1 style="font-size:1.1rem; margin-top:18px;">${CURRICULUM[subject].icon} ${CURRICULUM[subject].label}</h1>${rows}`;
+  }).join("");
+  app.innerHTML = `
+    <div class="card">
+      <button class="back-link" onclick="renderHome()">← Home</button>
+      <h1>Progress</h1>
+      <p class="subtitle">Tier shows current difficulty level per topic — this is how the app tracks and closes gaps over time.</p>
+      ${sections}
+    </div>`;
+}
+
+// Expose functions used by inline onclick handlers
+window.startRound = startRound;
+window.answer = answer;
+window.nextQuestion = nextQuestion;
+window.renderHome = renderHome;
+window.renderDashboard = renderDashboard;
+
+renderHome();
+</script>
+</body>
+</html>
