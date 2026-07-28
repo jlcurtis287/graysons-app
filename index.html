@@ -32,13 +32,15 @@
   .subtitle{color:var(--muted); margin:0 0 22px; font-size:.95rem;}
   .subject-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:20px;}
   .subject-btn{
-    border:none; border-radius:18px; padding:28px 12px; font-size:1.1rem; font-weight:700;
+    border:none; border-radius:18px; padding:24px 12px; font-size:1.1rem; font-weight:700;
     cursor:pointer; color:white; display:flex; flex-direction:column; align-items:center; gap:8px;
     transition:transform .15s ease;
   }
   .subject-btn:active{transform:scale(.96);}
+  .subject-btn.full-width{grid-column:1 / -1;}
   .subject-btn.math{background:linear-gradient(135deg,#2563eb,#1d4ed8);}
   .subject-btn.english{background:linear-gradient(135deg,#16a34a,#15803d);}
+  .subject-btn.history{background:linear-gradient(135deg,#dc2626,#b91c1c);}
   .subject-btn .icon{font-size:2.2rem;}
   .progress-strip{display:flex; gap:6px; margin:18px 0;}
   .progress-dot{flex:1; height:8px; border-radius:4px; background:#e2e8f0;}
@@ -49,7 +51,9 @@
     text-transform:uppercase; color:var(--blue); background:#eff6ff; padding:4px 10px;
     border-radius:999px; margin-bottom:12px;
   }
+  .qtag.bonus{color:var(--amber); background:#fffbeb;}
   .question{font-size:1.25rem; font-weight:600; line-height:1.4; margin:0 0 20px;}
+  .primer-text{font-size:1.05rem; font-weight:400; line-height:1.65; color:#1e293b; margin:0 0 20px;}
   .options{display:flex; flex-direction:column; gap:10px;}
   .opt{
     text-align:left; border:2px solid #e2e8f0; background:#f8fafc; border-radius:14px;
@@ -67,6 +71,10 @@
     margin-top:18px; width:100%; padding:14px; border:none; border-radius:14px;
     background:var(--blue); color:white; font-size:1.05rem; font-weight:700; cursor:pointer;
   }
+  .bonus-btn{
+    margin-top:10px; width:100%; padding:14px; border:none; border-radius:14px;
+    background:var(--amber); color:white; font-size:1.05rem; font-weight:700; cursor:pointer;
+  }
   .back-link{background:none; border:none; color:var(--muted); font-size:.9rem; cursor:pointer; padding:0; margin-bottom:10px;}
   .summary-stat{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eef2f7;}
   .summary-stat:last-child{border-bottom:none;}
@@ -79,6 +87,11 @@
     margin-top:10px; width:100%; padding:12px; border:2px solid #e2e8f0; background:white;
     border-radius:14px; font-size:.95rem; font-weight:600; color:var(--muted); cursor:pointer;
   }
+  .year-banner{
+    background:linear-gradient(135deg,#fef3c7,#fde68a); border-radius:14px; padding:14px 16px;
+    margin:14px 0; text-align:center; font-weight:700; color:#92400e;
+  }
+  .subject-summary{color:var(--muted); font-size:.85rem; margin:2px 0 10px;}
 </style>
 </head>
 <body>
@@ -86,19 +99,27 @@
 
 <script>
 /* =========================================================================
-   GRAYSON'S APP — adaptive Math & English practice
+   GRAYSON'S APP — adaptive Math, English & History practice
    Single-file static app. No build step. Deployable as-is to GitHub Pages.
    Progress persists locally (localStorage) and, once configured, syncs
    across devices via Firebase (see SYNC section near the bottom).
    ========================================================================= */
 
 /* ---------------------------------------------------------------------
-   1. CURRICULUM — topic map, Year 2-4, selective/independent-school pace
+   1. CURRICULUM
+   - math / english: procedurally-generated drill topics, 4 difficulty
+     tiers each, mapped to Year 2 (Basics) -> Year 2 (Advanced) -> Year 3
+     -> Year 4 so progress reads as moving through real school years.
+   - history: US history at a US grade 1-2 level (Grayson isn't taught
+     this in the UK, so every topic opens with a short primer paragraph
+     before any question — no assumed context).
    --------------------------------------------------------------------- */
 const CURRICULUM = {
   math: {
     label: "Math",
     icon: "🚗",
+    tierLabels: ["Year 2 (Basics)","Year 2 (Advanced)","Year 3","Year 4"],
+    yearForTier: [2,2,3,4],
     topics: [
       {id:"place_value",  name:"Number & Place Value"},
       {id:"add_sub",      name:"Addition & Subtraction"},
@@ -113,6 +134,8 @@ const CURRICULUM = {
   english: {
     label: "English",
     icon: "📚",
+    tierLabels: ["Year 2 (Basics)","Year 2 (Advanced)","Year 3","Year 4"],
+    yearForTier: [2,2,3,4],
     topics: [
       {id:"word_classes",       name:"Word Classes"},
       {id:"sentence_structure", name:"Sentences & Clauses"},
@@ -121,9 +144,34 @@ const CURRICULUM = {
       {id:"vocabulary",         name:"Vocabulary & Spelling"},
       {id:"composition",        name:"Composition & Style"},
     ]
+  },
+  history: {
+    label: "History",
+    icon: "🦅",
+    tierLabels: ["Getting Started","Building Understanding","Making Connections","Deeper Thinking"],
+    isReading: true, // triggers the primer-then-questions round flow
+    topics: [
+      {id:"flag", name:"The American Flag",
+        primer:"The flag of the United States has 50 white stars and 13 red and white stripes. Each star stands for one of the 50 states in the country today. The 13 stripes stand for the first 13 colonies that became the United States back in 1776. The flag is sometimes called \"Old Glory\" or \"the Stars and Stripes.\" Many Americans say the Pledge of Allegiance while looking at the flag, especially at school in the morning."},
+      {id:"independence_day", name:"Independence Day",
+        primer:"A long time ago, America was made up of 13 colonies ruled by Britain, far across the ocean. Many colonists felt this wasn't fair, because they had no say in the laws that governed them. On July 4, 1776, leaders signed the Declaration of Independence — a document saying the colonies were now a free country called the United States. That's why Americans celebrate the Fourth of July every year with fireworks, parades, and picnics. It's the country's birthday!"},
+      {id:"washington", name:"George Washington",
+        primer:"George Washington was a general who led American soldiers during the Revolutionary War — the fight for independence from Britain. After America won, Washington became the very first President of the United States, in 1789. He is sometimes called the \"Father of His Country.\" His face appears on the one-dollar bill and the quarter coin, and a giant carving of his face is on Mount Rushmore."},
+      {id:"lincoln", name:"Abraham Lincoln",
+        primer:"Abraham Lincoln was the 16th President of the United States. He led the country through the Civil War, a war between the Northern and Southern states. One of the biggest reasons for the war was slavery: some states wanted to keep enslaving people, while others wanted it to end. In 1863, Lincoln signed the Emancipation Proclamation, an important step toward ending slavery in the United States. Lincoln is remembered for his honesty and for helping hold the country together."},
+      {id:"thanksgiving", name:"Thanksgiving",
+        primer:"In 1620, a group of English settlers called the Pilgrims sailed across the ocean on a ship named the Mayflower and landed in what is now Massachusetts. Native American people, including the Wampanoag, were already living there and knew the land well. A Wampanoag man named Squanto helped the Pilgrims learn to grow corn and survive. In the fall of 1621, the Pilgrims and the Wampanoag shared a large harvest feast together — an event remembered today as the first Thanksgiving."},
+      {id:"native_americans", name:"Native Americans",
+        primer:"Long before any European settlers arrived, millions of Native American people were already living across the land that is now the United States. There were hundreds of different tribes and nations, each with its own language, traditions, and way of life — from the Wampanoag in the east, to the Navajo in the southwest, to the Lakota on the Great Plains. Native Americans were the first people to call this land home, and many tribes and nations are still part of American life today."},
+      {id:"mlk", name:"Martin Luther King Jr.",
+        primer:"Martin Luther King Jr. was a leader who worked to make sure Black Americans were treated fairly, during a time when unfair laws kept them separated from white Americans in schools, buses, and other public places. Dr. King believed in peaceful protest — marching and speaking out without violence. In 1963, he gave a famous speech called \"I Have a Dream,\" sharing his hope that one day everyone would be treated equally, no matter the color of their skin. Every January, the United States celebrates Martin Luther King Jr. Day in his honor."},
+      {id:"statue_of_liberty", name:"The Statue of Liberty",
+        primer:"The Statue of Liberty is a giant statue of a woman holding a torch, standing on an island in New York Harbor. France gave the statue to the United States as a gift in 1886, to celebrate friendship between the two countries and the idea of freedom. For many years, ships full of immigrants — people moving to America from other countries — passed by the statue as they arrived. It became a symbol of hope and welcome for a new life in America."},
+      {id:"map_capital", name:"The Map & the Capital",
+        primer:"The United States is made up of 50 states, from Hawaii in the Pacific Ocean to Maine on the Atlantic coast. The country's capital city — where the President lives and works — is Washington, D.C. It isn't part of any state; it's its own special district. The President lives and works in a building called the White House, and nearby is the Capitol Building, where the country's laws are made."},
+    ]
   }
 };
-const TIER_LABELS = ["Foundation","Year 2/3","Year 3/4","Year 4 Extension"];
 
 /* ---------------------------------------------------------------------
    2. HELPERS
@@ -131,7 +179,7 @@ const TIER_LABELS = ["Foundation","Year 2/3","Year 3/4","Year 4 Extension"];
 function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 function pick(arr){ return arr[randInt(0,arr.length-1)]; }
 function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=randInt(0,i);[a[i],a[j]]=[a[j],a[i]];} return a; }
-// Builds a 4-option MCQ from a correct value + distractor pool, returns {options, correctIndex}
+// Builds a multiple-choice question from a correct value + distractor pool, returns {options, correctIndex}
 function makeMCQ(correct, distractorPool, fmt=(x)=>String(x)){
   // For every question in this app, a negative number is never a sensible
   // answer (ages, totals, money, sides, faces, subtraction results, fractions
@@ -165,13 +213,21 @@ function makeMCQ(correct, distractorPool, fmt=(x)=>String(x)){
   const all = shuffle([correct, ...chosen]);
   return { options: all.map(fmt), correctIndex: all.findIndex(v=>fmt(v)===fmt(correct)) };
 }
+// Builds a fixed-content comprehension question (used by History): same
+// shuffling/dedup behaviour as makeMCQ, but for hand-written fact strings
+// rather than generated numbers.
+function makeFactMCQ(correct, wrongs, explain, q){
+  const {options, correctIndex} = makeMCQ(correct, wrongs, (x)=>String(x));
+  return {q, options, correctIndex, explain};
+}
 
 /* ---------------------------------------------------------------------
-   3. QUESTION GENERATORS — one function per (topic, tier), procedurally
-      generated so there's effectively unlimited practice, not a fixed
-      question bank that runs out.
+   3. QUESTION CONTENT
+   - math / english: procedurally generated, unlimited variety.
+   - history: fixed comprehension questions per topic, 4 per topic
+     ordered easy -> harder (recall, recall, why, comprehension/inference).
    --------------------------------------------------------------------- */
-const G = { math:{}, english:{} };
+const G = { math:{}, english:{}, history:{} };
 
 // ---- MATH: Place Value ----
 G.math.place_value = [
@@ -321,8 +377,7 @@ G.math.geometry = [
 // ---- MATH: Statistics ----
 G.math.statistics = [
   () => { // pictogram: 4 DISTINCT values so there's always exactly one right answer (no ties)
-    const pool = shuffle([2,3,4,5,6,7,8,9,10,11]).slice(0,4);
-    const vals = pool; // already distinct, since drawn without replacement
+    const vals = shuffle([2,3,4,5,6,7,8,9,10,11]).slice(0,4); // drawn without replacement -> distinct
     const max=Math.max(...vals);
     const labels=["Item 1","Item 2","Item 3","Item 4"];
     const correctLabel = labels[vals.indexOf(max)];
@@ -480,7 +535,6 @@ G.english.vocabulary = [
       explain:`"${prefix}" + "${root}" = "${correct}" (${meaning}).`}; },
   () => { const pairs=[["their","there"],["to","too"],["hear","here"],["write","right"]];
     const [a,b]=pick(pairs); const useA=Math.random()<0.5; const word=useA?a:b;
-    const correct = word; // just testing recognition of the pair as homophones
     const {options,correctIndex}=makeMCQ(`${a} / ${b}`,[`${a} / ${a}`,`${b} / ${b}`]);
     return {q:`"${word}" has a homophone (sounds the same, different spelling & meaning). Which pair is correct?`,
       options, correctIndex, explain:`"${a}" and "${b}" are homophones.`}; }
@@ -511,6 +565,136 @@ G.english.composition = [
       explain:`"${expanded}" adds vivid, specific detail.`}; }
 ];
 
+// ---- HISTORY: 4 fixed comprehension questions per topic (easy -> harder) ----
+// Each topic's tier controls how many of its 4 questions are unlocked for a
+// given round visit (2 at tier0, 3 at tier1, all 4 at tier2/3) — the same
+// per-topic tier/streak state and recordAnswer logic used by math/english
+// drives this, no separate leveling code needed.
+G.history.flag = [
+  () => makeFactMCQ("50", ["13","48","52"], "The flag has 50 stars, one for each of the 50 states.",
+    "How many stars are on the American flag?"),
+  () => makeFactMCQ("The first 13 colonies", ["The 13 presidents","The 13 states today","The 13 wars fought"],
+    "The 13 stripes stand for the first 13 colonies that became the United States.",
+    "What do the 13 stripes on the flag stand for?"),
+  () => makeFactMCQ("Because there are 50 states today", ["Because it looked nice","Because there were 50 presidents","Because the flag is 50 years old"],
+    "Each star stands for one of the 50 states, so there are 50 stars.",
+    "Why does the flag have 50 stars?"),
+  () => makeFactMCQ("Old Glory", ["Red White Blue","Freedom Flag","Liberty Banner"],
+    "The passage says the flag is sometimes called \"Old Glory\" or \"the Stars and Stripes.\"",
+    "What is another nickname for the flag, mentioned in the passage?"),
+];
+G.history.independence_day = [
+  () => makeFactMCQ("The Declaration of Independence", ["The Constitution","The Bill of Rights","The Emancipation Proclamation"],
+    "On July 4, 1776, leaders signed the Declaration of Independence.",
+    "What document was signed on July 4, 1776?"),
+  () => makeFactMCQ("The country's birthday", ["Washington's birthday","The end of a war","The start of school"],
+    "The passage calls July 4th the country's birthday, since that's when it became independent.",
+    "What is July 4th often called?"),
+  () => makeFactMCQ("They had no say in the laws that governed them", ["They wanted a bigger flag","They ran out of food","They wanted a king of their own"],
+    "The colonists felt it wasn't fair to be ruled by Britain when they had no say in the laws.",
+    "Why did the colonists want independence from Britain?"),
+  () => makeFactMCQ("Fireworks, parades, and picnics", ["Sending letters to Britain","A quiet day at school","Building new colonies"],
+    "The passage says Americans celebrate with fireworks, parades, and picnics.",
+    "How do Americans usually celebrate the Fourth of July?"),
+];
+G.history.washington = [
+  () => makeFactMCQ("The first President", ["The 16th President","The current President","A king"],
+    "George Washington became the very first President of the United States in 1789.",
+    "Which President was George Washington?"),
+  () => makeFactMCQ("A general who led soldiers in the Revolutionary War", ["A ship captain","A schoolteacher","A king of Britain"],
+    "Before becoming President, Washington was a general who led American soldiers in the Revolutionary War.",
+    "What was George Washington's job before he became President?"),
+  () => makeFactMCQ("\"Father of His Country\"", ["\"The Great Explorer\"","\"The Peacemaker\"","\"The First Citizen\""],
+    "The passage says Washington is sometimes called the \"Father of His Country.\"",
+    "What nickname is given to George Washington in the passage?"),
+  () => makeFactMCQ("The one-dollar bill", ["The ten-dollar bill","A postage stamp only","A football jersey"],
+    "The passage says his face appears on the one-dollar bill (and the quarter, and Mount Rushmore).",
+    "Name one place mentioned in the passage where you can see George Washington's face."),
+];
+G.history.lincoln = [
+  () => makeFactMCQ("The 16th President", ["The first President","The 2nd President","The current President"],
+    "Abraham Lincoln was the 16th President of the United States.",
+    "What number President was Abraham Lincoln?"),
+  () => makeFactMCQ("The Civil War", ["The Revolutionary War","World War 1","A war with France"],
+    "Lincoln led the country through the Civil War, between the Northern and Southern states.",
+    "What war did Lincoln lead the country through?"),
+  () => makeFactMCQ("Slavery", ["Taxes on tea","A disagreement about a flag","A border with Canada"],
+    "The passage says one of the biggest reasons for the war was slavery.",
+    "What was one of the biggest reasons for the Civil War?"),
+  () => makeFactMCQ("The Emancipation Proclamation", ["The Declaration of Independence","The Constitution","The Gettysburg Bridge"],
+    "In 1863, Lincoln signed the Emancipation Proclamation, an important step toward ending slavery.",
+    "What did Lincoln sign in 1863 that was an important step toward ending slavery?"),
+];
+G.history.thanksgiving = [
+  () => makeFactMCQ("The Mayflower", ["The Liberty","The Santa Maria","The Eagle"],
+    "The Pilgrims sailed across the ocean on a ship named the Mayflower.",
+    "What was the name of the ship the Pilgrims sailed on?"),
+  () => makeFactMCQ("Native Americans, including the Wampanoag", ["No one","French explorers","Spanish settlers"],
+    "The passage says Native American people, including the Wampanoag, were already living there.",
+    "Who was already living on the land when the Pilgrims arrived?"),
+  () => makeFactMCQ("Squanto, a Wampanoag man", ["The ship's captain","A Pilgrim child","A British king"],
+    "A Wampanoag man named Squanto helped the Pilgrims learn to grow corn and survive.",
+    "Who helped the Pilgrims learn to grow corn?"),
+  () => makeFactMCQ("The harvest feast shared by the Pilgrims and the Wampanoag", ["The day the ship landed","A snowstorm","A trip back to England"],
+    "The passage says the 1621 harvest feast shared together is remembered today as the first Thanksgiving.",
+    "What event from the passage is remembered today as the first Thanksgiving?"),
+];
+G.history.native_americans = [
+  () => makeFactMCQ("Yes, millions of Native Americans were already living there", ["No, the land was empty","Only a few dozen people lived there","They arrived after the Pilgrims"],
+    "The passage says millions of Native American people were already living across the land long before settlers arrived.",
+    "Were Native Americans already living in America before European settlers arrived?"),
+  () => makeFactMCQ("Wampanoag, Navajo, or Lakota", ["Vikings","Romans","Pilgrims"],
+    "The passage names the Wampanoag, Navajo, and Lakota as examples of Native American tribes and nations.",
+    "Name one Native American tribe or nation mentioned in the passage."),
+  () => makeFactMCQ("No — each had its own language and traditions", ["Yes, they were all identical", "No, none of them had traditions", "Yes, they all spoke English"],
+    "The passage says there were hundreds of different tribes and nations, each with its own language and traditions.",
+    "Did all Native American tribes share the exact same language and traditions?"),
+  () => makeFactMCQ("Many tribes and nations are still part of American life today", ["They all disappeared long ago","They moved to a different country","Only their name is remembered"],
+    "The passage ends by saying many tribes and nations are still part of American life today.",
+    "What does the passage say about Native Americans and America today?"),
+];
+G.history.mlk = [
+  () => makeFactMCQ("Fair and equal treatment for Black Americans", ["A new flag design","More holidays for everyone","Building more schools"],
+    "Dr. King worked to make sure Black Americans were treated fairly and equally.",
+    "What did Martin Luther King Jr. work to achieve?"),
+  () => makeFactMCQ("Peaceful protest, without violence", ["Fighting with weapons","Ignoring the problem","Writing new laws himself"],
+    "The passage says Dr. King believed in peaceful protest — marching and speaking out without violence.",
+    "What method did Dr. King believe in for protesting unfair laws?"),
+  () => makeFactMCQ("\"I Have a Dream\"", ["\"Old Glory\"","\"Give Me Liberty\"","\"We Shall Overcome\""],
+    "In 1963, Dr. King gave a famous speech called \"I Have a Dream.\"",
+    "What was the name of Dr. King's famous 1963 speech?"),
+  () => makeFactMCQ("Every January", ["Every July","Every October","Only once, in 1963"],
+    "The passage says the United States celebrates Martin Luther King Jr. Day every January.",
+    "When does the United States celebrate Martin Luther King Jr. Day?"),
+];
+G.history.statue_of_liberty = [
+  () => makeFactMCQ("A torch", ["A book","A sword","A flag"],
+    "The Statue of Liberty is a statue of a woman holding a torch.",
+    "What is the Statue of Liberty holding?"),
+  () => makeFactMCQ("France", ["Britain","Spain","Italy"],
+    "France gave the statue to the United States as a gift in 1886.",
+    "Which country gave the Statue of Liberty to the United States?"),
+  () => makeFactMCQ("1886", ["1776","1620","1963"],
+    "The passage says the statue was given as a gift in 1886.",
+    "In what year was the Statue of Liberty given as a gift?"),
+  () => makeFactMCQ("It welcomed people arriving in America for a new life", ["It was the tallest building", "It was free to visit", "It was built by immigrants"],
+    "Ships full of immigrants passed by the statue as they arrived, and it became a symbol of hope and welcome.",
+    "Why did the Statue of Liberty become a symbol of hope for immigrants?"),
+];
+G.history.map_capital = [
+  () => makeFactMCQ("50", ["13","48","52"], "The United States is made up of 50 states.",
+    "How many states make up the United States?"),
+  () => makeFactMCQ("Washington, D.C.", ["New York City","Philadelphia","Boston"],
+    "The passage says the country's capital city is Washington, D.C.",
+    "What is the name of the country's capital city?"),
+  () => makeFactMCQ("The White House", ["The Capitol Building","Mount Rushmore","The Mayflower"],
+    "The passage says the President lives and works in a building called the White House.",
+    "What is the name of the building where the President lives?"),
+  () => makeFactMCQ("The Capitol Building", ["The White House","The Statue of Liberty","Mount Rushmore"],
+    "The passage says the country's laws are made nearby, in the Capitol Building.",
+    "Where are the country's laws made?"),
+];
+
 /* ---------------------------------------------------------------------
    4. STATE & PERSISTENCE (localStorage now; Firebase hook below)
    --------------------------------------------------------------------- */
@@ -520,18 +704,20 @@ function defaultTopicState(){
   return { tier:1, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0 };
 }
 function defaultState(){
-  const s = { math:{topics:{}}, english:{topics:{}}, history:[] };
-  for(const subj of ["math","english"]){
+  const s = { history:[] };
+  for(const subj of Object.keys(CURRICULUM)){
+    s[subj] = { topics:{} };
     for(const t of CURRICULUM[subj].topics){
       s[subj].topics[t.id] = defaultTopicState();
     }
   }
   return s;
 }
-// Migrates any state saved by an older version of the app (e.g. the old
-// single "streak" field) so upgrading never crashes or loses progress.
+// Migrates any state saved by an older version of the app (missing fields,
+// or a whole subject that didn't exist yet, like History) so upgrading
+// never crashes or loses progress.
 function migrateState(s){
-  for(const subj of ["math","english"]){
+  for(const subj of Object.keys(CURRICULUM)){
     if(!s[subj]) s[subj] = {topics:{}};
     if(!s[subj].topics) s[subj].topics = {};
     for(const t of CURRICULUM[subj].topics){
@@ -547,7 +733,12 @@ function migrateState(s){
       if(existing.roundsSince === undefined) existing.roundsSince = 0;
     }
   }
-  if(!s.history) s.history = [];
+  if(!s.history || Array.isArray(s.history) === false){
+    // "history" used to be a leftover empty array placeholder in older
+    // saves; Object.keys(CURRICULUM) above already turned it into a proper
+    // subject object, so nothing further to do here — this branch only
+    // guards against a stale array literal surviving migration.
+  }
   return s;
 }
 function loadState(){
@@ -567,32 +758,78 @@ let STATE = loadState();
 /* ---------------------------------------------------------------------
    5. ADAPTIVE ENGINE
    --------------------------------------------------------------------- */
-function pickTopicOrder(subject){
+
+// Ranks a subject's topics by priority: flagged-for-review first, then
+// whichever topic has gone the most rounds without being practiced. Shared
+// by both round-building strategies below.
+function rankTopicsByPriority(subject){
   const topics = CURRICULUM[subject].topics.map(t=>t.id);
   const s = STATE[subject].topics;
-  // Every topic gets covered at least once per round (no-gaps guarantee).
-  // Extra slots (to reach 10) go to topics flagged needsReview, then to
-  // whichever topics have gone the most rounds without being seen.
-  const base = shuffle(topics);
-  const extrasNeeded = 10 - base.length;
-  const ranked = [...topics].sort((a,b)=>{
+  return [...topics].sort((a,b)=>{
     const sa=s[a], sb=s[b];
     if(sa.needsReview !== sb.needsReview) return sa.needsReview ? -1 : 1;
     return sb.roundsSince - sa.roundsSince;
   });
+}
+
+// Standard (math/english) round: every topic covered at least once (no-gaps
+// guarantee), extra slots up to 10 go to the highest-priority topics.
+function pickTopicOrder(subject){
+  const topics = CURRICULUM[subject].topics.map(t=>t.id);
+  const base = shuffle(topics);
+  const extrasNeeded = 10 - base.length;
+  const ranked = rankTopicsByPriority(subject);
   const extras = [];
   for(let i=0;i<extrasNeeded;i++){ extras.push(ranked[i % ranked.length]); }
   return shuffle([...base, ...extras]).slice(0,10);
 }
 
-function buildRound(subject){
-  const order = pickTopicOrder(subject);
+function questionsForTopicOrder(subject, order){
   return order.map(topicId => {
     const tier = STATE[subject].topics[topicId].tier;
     const gens = G[subject][topicId];
     const q = gens[Math.min(tier, gens.length-1)]();
     return { topicId, tier, ...q };
   });
+}
+
+// History round: pick a handful of topics by priority; for each, unlock
+// more of its 4 fixed comprehension questions as its tier rises (2 at
+// tier0, 3 at tier1, all 4 at tier2+), primer shown once before the first
+// question of that topic.
+const HISTORY_TOPICS_PER_ROUND = 3;
+function buildHistoryRound(subject, topicIdsOverride){
+  const topicIds = topicIdsOverride || rankTopicsByPriority(subject).slice(0, HISTORY_TOPICS_PER_ROUND);
+  const out = [];
+  for(const topicId of topicIds){
+    const tier = STATE[subject].topics[topicId].tier;
+    const unlockCount = Math.min(tier+2, 4);
+    const topicDef = CURRICULUM[subject].topics.find(t=>t.id===topicId);
+    const qFns = G[subject][topicId];
+    for(let i=0;i<unlockCount;i++){
+      const q = qFns[i]();
+      out.push({ topicId, tier, primer: i===0 ? topicDef.primer : null, ...q });
+    }
+  }
+  return out;
+}
+
+function buildRound(subject){
+  if(CURRICULUM[subject].isReading) return buildHistoryRound(subject);
+  return questionsForTopicOrder(subject, pickTopicOrder(subject));
+}
+
+// Bonus round: focused practice on exactly the topics that gave trouble
+// last round. Math/English cycle through them to fill 10 slots (fresh
+// procedural questions each time); History revisits each weak topic's
+// primer + its currently-unlocked questions.
+function buildBonusRound(subject, topicIds){
+  if(!topicIds || !topicIds.length) return [];
+  if(CURRICULUM[subject].isReading) return buildHistoryRound(subject, topicIds);
+  const shuffledBase = shuffle(topicIds);
+  const order = [];
+  for(let i=0;i<10;i++) order.push(shuffledBase[i % shuffledBase.length]);
+  return questionsForTopicOrder(subject, order);
 }
 
 // Leveling rule: a topic only gets harder once it's been answered correctly
@@ -623,6 +860,17 @@ function recordAnswer(subject, topicId, wasCorrect){
   return { tierBefore, tierAfter: t.tier, leveledUp, leveledDown };
 }
 
+// Subject-wide "year" for math/english: the year of the topic he's weakest
+// in, since the goal is uniform mastery, not racing ahead on his favourite
+// topic while others lag. Returns null for subjects without yearForTier
+// (e.g. History, which uses depth labels instead of years).
+function subjectYear(subject){
+  const cfg = CURRICULUM[subject];
+  if(!cfg.yearForTier) return null;
+  const tiers = cfg.topics.map(t => STATE[subject].topics[t.id].tier);
+  return Math.min(...tiers.map(t => cfg.yearForTier[t]));
+}
+
 /* ---------------------------------------------------------------------
    6. SYNC (Firebase) — stub until a free Firebase project is connected.
    To activate: paste your Firebase config below and set SYNC_ENABLED=true.
@@ -646,36 +894,64 @@ function cloudPull(){
    --------------------------------------------------------------------- */
 const app = document.getElementById("app");
 let currentRound = null, currentIndex = 0, currentSubject = null, roundResults = [];
+let currentRoundMode = "normal"; // "normal" | "bonus"
+let primerAcknowledged = {}; // topicId -> true, once its primer has been shown this round
+let yearBeforeRound = null; // subjectYear() snapshot taken at round start, for celebrating advances
 
 function renderHome(){
+  const subjectButtons = Object.keys(CURRICULUM).map((subj,i)=>{
+    const cfg = CURRICULUM[subj];
+    const wide = Object.keys(CURRICULUM).length % 2 === 1 && i === Object.keys(CURRICULUM).length-1;
+    return `<button class="subject-btn ${subj}${wide?' full-width':''}" onclick="startRound('${subj}')">
+      <span class="icon">${cfg.icon}</span> ${cfg.label}
+    </button>`;
+  }).join("");
   app.innerHTML = `
     <div class="card">
       <h1>🚀 Grayson's App</h1>
-      <p class="subtitle">Pick a subject to start today's set of 10 questions.</p>
-      <div class="subject-grid">
-        <button class="subject-btn math" onclick="startRound('math')">
-          <span class="icon">🚗</span> Math
-        </button>
-        <button class="subject-btn english" onclick="startRound('english')">
-          <span class="icon">📚</span> English
-        </button>
-      </div>
+      <p class="subtitle">Pick a subject to get started.</p>
+      <div class="subject-grid">${subjectButtons}</div>
       <button class="dashboard-btn" onclick="renderDashboard()">View progress</button>
       <p class="footer-note">Runs fully offline once loaded. No account needed to play.</p>
     </div>`;
 }
 
-function startRound(subject){
+function startRound(subject, focusTopicIds){
   currentSubject = subject;
-  currentRound = buildRound(subject);
+  primerAcknowledged = {};
+  yearBeforeRound = subjectYear(subject);
+  if(focusTopicIds && focusTopicIds.length){
+    currentRound = buildBonusRound(subject, focusTopicIds);
+    currentRoundMode = "bonus";
+  } else {
+    currentRound = buildRound(subject);
+    currentRoundMode = "normal";
+  }
   currentIndex = 0;
   roundResults = [];
+  if(!currentRound.length){ renderHome(); return; }
+  renderQuestion();
+}
+
+function renderPrimer(q){
+  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
+  app.innerHTML = `
+    <div class="card">
+      <button class="back-link" onclick="renderHome()">← Exit</button>
+      <span class="qtag">${topicName}</span>
+      <p class="primer-text">📖 ${q.primer}</p>
+      <button class="next-btn" onclick="acknowledgePrimer()">I've read it — let's go!</button>
+    </div>`;
+}
+function acknowledgePrimer(){
+  primerAcknowledged[currentRound[currentIndex].topicId] = true;
   renderQuestion();
 }
 
 function renderQuestion(){
-  const total = currentRound.length;
   const q = currentRound[currentIndex];
+  if(q.primer && !primerAcknowledged[q.topicId]){ renderPrimer(q); return; }
+  const total = currentRound.length;
   const dots = currentRound.map((_,i)=>{
     let cls = "progress-dot";
     if(i < currentIndex) cls += " done";
@@ -687,7 +963,7 @@ function renderQuestion(){
     <div class="card">
       <button class="back-link" onclick="renderHome()">← Exit</button>
       <div class="progress-strip">${dots}</div>
-      <span class="qtag">${topicName} · Q${currentIndex+1} of ${total}</span>
+      <span class="qtag${currentRoundMode==='bonus'?' bonus':''}">${currentRoundMode==='bonus'?'Bonus · ':''}${topicName} · Q${currentIndex+1} of ${total}</span>
       <p class="question">${q.q}</p>
       <div class="options" id="options">
         ${q.options.map((opt,i)=>`<button class="opt" data-i="${i}" onclick="answer(${i})">${opt}</button>`).join("")}
@@ -742,10 +1018,11 @@ function renderSummary(){
     if(!missesByTopic[r.topicId]) missesByTopic[r.topicId] = { topicName:r.topicName, items:[] };
     missesByTopic[r.topicId].items.push(r);
   }
+  const missTopics = Object.values(missesByTopic);
+  const missTopicIds = Object.keys(missesByTopic);
   const leveledUpTopics = [...new Set(roundResults.filter(r=>r.leveledUp).map(r=>r.topicName))];
 
   let focusHTML = "";
-  const missTopics = Object.values(missesByTopic);
   if(missTopics.length === 0){
     focusHTML = `<div class="summary-stat" style="border:none;"><span style="color:#16a34a; font-weight:600;">Perfect round — no gaps to flag. 🎉</span></div>`;
   } else {
@@ -759,15 +1036,29 @@ function renderSummary(){
     ? `<p class="explain" style="margin-top:10px;">⬆ Leveled up this round in: <strong>${leveledUpTopics.join(", ")}</strong></p>`
     : "";
 
+  // Year-advance celebration: only for subjects with yearForTier (math/english).
+  // Compares the subject-wide year at round start vs now, so it only fires
+  // when the WHOLE subject crosses into a new year, not just one topic.
+  const yearAfterRound = subjectYear(currentSubject);
+  const yearBannerHTML = (yearBeforeRound !== null && yearAfterRound !== null && yearAfterRound > yearBeforeRound)
+    ? `<div class="year-banner">🎓 Amazing work — moving into Year ${yearAfterRound} for ${CURRICULUM[currentSubject].label}!</div>`
+    : "";
+
+  const bonusBtnHTML = (currentRoundMode === "normal" && missTopicIds.length > 0)
+    ? `<button class="bonus-btn" onclick='startRound("${currentSubject}", ${JSON.stringify(missTopicIds)})'>🎯 Bonus round: focus on tricky topics</button>`
+    : "";
+
   app.innerHTML = `
     <div class="card">
       <div class="big-emoji">${emoji}</div>
       <h1 style="text-align:center;">${correctCount} / ${total} correct</h1>
-      <p class="subtitle" style="text-align:center;">${CURRICULUM[currentSubject].label} round complete.</p>
+      <p class="subtitle" style="text-align:center;">${currentRoundMode==='bonus' ? 'Bonus round complete.' : CURRICULUM[currentSubject].label + ' round complete.'}</p>
+      ${yearBannerHTML}
       ${levelUpHTML}
       <h1 style="font-size:1.05rem; margin-top:18px;">Focus on next time</h1>
       ${focusHTML}
-      <p class="footer-note" style="margin-top:12px;">The next round will bring these topics back around more often until they're solid.</p>
+      <p class="footer-note" style="margin-top:12px;">${missTopics.length ? "The next round will bring these topics back around more often until they're solid." : ""}</p>
+      ${bonusBtnHTML}
       <button class="next-btn" onclick="startRound('${currentSubject}')">Play another round</button>
       <button class="dashboard-btn" onclick="renderDashboard()">View progress</button>
       <button class="back-link" style="margin-top:10px;" onclick="renderHome()">← Home</button>
@@ -775,22 +1066,27 @@ function renderSummary(){
 }
 
 function renderDashboard(){
-  const sections = ["math","english"].map(subject=>{
-    const rows = CURRICULUM[subject].topics.map(t=>{
+  const sections = Object.keys(CURRICULUM).map(subject=>{
+    const cfg = CURRICULUM[subject];
+    const year = subjectYear(subject);
+    const summaryLine = year !== null
+      ? `<p class="subject-summary">Currently working in: <strong>Year ${year}</strong></p>`
+      : `<p class="subject-summary">Reading-based — depth grows as topics are mastered.</p>`;
+    const rows = cfg.topics.map(t=>{
       const s = STATE[subject].topics[t.id];
       const acc = s.attempts ? Math.round((s.correct/s.attempts)*100) : null;
       return `<div class="summary-stat">
         <span class="topic-name">${t.name}</span>
-        <span><span class="tier-badge t${s.tier}">${TIER_LABELS[s.tier]}</span> ${acc!==null?` · ${acc}%`:""}</span>
+        <span><span class="tier-badge t${s.tier}">${cfg.tierLabels[s.tier]}</span> ${acc!==null?` · ${acc}%`:""}</span>
       </div>`;
     }).join("");
-    return `<h1 style="font-size:1.1rem; margin-top:18px;">${CURRICULUM[subject].icon} ${CURRICULUM[subject].label}</h1>${rows}`;
+    return `<h1 style="font-size:1.1rem; margin-top:18px;">${cfg.icon} ${cfg.label}</h1>${summaryLine}${rows}`;
   }).join("");
   app.innerHTML = `
     <div class="card">
       <button class="back-link" onclick="renderHome()">← Home</button>
       <h1>Progress</h1>
-      <p class="subtitle">Tier shows current difficulty level per topic — this is how the app tracks and closes gaps over time.</p>
+      <p class="subtitle">This is how the app tracks and closes gaps over time.</p>
       ${sections}
     </div>`;
 }
@@ -799,6 +1095,7 @@ function renderDashboard(){
 window.startRound = startRound;
 window.answer = answer;
 window.nextQuestion = nextQuestion;
+window.acknowledgePrimer = acknowledgePrimer;
 window.renderHome = renderHome;
 window.renderDashboard = renderDashboard;
 
