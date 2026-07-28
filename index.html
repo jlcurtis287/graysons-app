@@ -311,8 +311,9 @@ G.math.geometry = [
 
 // ---- MATH: Statistics ----
 G.math.statistics = [
-  () => { // pictogram: 4 items so options are always 4 unique labels
-    const vals=[randInt(2,9),randInt(2,9),randInt(2,9),randInt(2,9)];
+  () => { // pictogram: 4 DISTINCT values so there's always exactly one right answer (no ties)
+    const pool = shuffle([2,3,4,5,6,7,8,9,10,11]).slice(0,4);
+    const vals = pool; // already distinct, since drawn without replacement
     const max=Math.max(...vals);
     const labels=["Item 1","Item 2","Item 3","Item 4"];
     const correctLabel = labels[vals.indexOf(max)];
@@ -506,19 +507,44 @@ G.english.composition = [
    --------------------------------------------------------------------- */
 const STORAGE_KEY = "graysons_app_state_v1";
 
+function defaultTopicState(){
+  return { tier:1, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0 };
+}
 function defaultState(){
   const s = { math:{topics:{}}, english:{topics:{}}, history:[] };
   for(const subj of ["math","english"]){
     for(const t of CURRICULUM[subj].topics){
-      s[subj].topics[t.id] = { tier:1, streak:0, attempts:0, correct:0, needsReview:false, roundsSince:0 };
+      s[subj].topics[t.id] = defaultTopicState();
     }
   }
+  return s;
+}
+// Migrates any state saved by an older version of the app (e.g. the old
+// single "streak" field) so upgrading never crashes or loses progress.
+function migrateState(s){
+  for(const subj of ["math","english"]){
+    if(!s[subj]) s[subj] = {topics:{}};
+    if(!s[subj].topics) s[subj].topics = {};
+    for(const t of CURRICULUM[subj].topics){
+      const existing = s[subj].topics[t.id];
+      if(!existing){ s[subj].topics[t.id] = defaultTopicState(); continue; }
+      if(existing.correctStreak === undefined) existing.correctStreak = existing.streak || 0;
+      if(existing.wrongStreak === undefined) existing.wrongStreak = 0;
+      delete existing.streak;
+      if(existing.tier === undefined) existing.tier = 1;
+      if(existing.attempts === undefined) existing.attempts = 0;
+      if(existing.correct === undefined) existing.correct = 0;
+      if(existing.needsReview === undefined) existing.needsReview = false;
+      if(existing.roundsSince === undefined) existing.roundsSince = 0;
+    }
+  }
+  if(!s.history) s.history = [];
   return s;
 }
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw) return JSON.parse(raw);
+    if(raw) return migrateState(JSON.parse(raw));
   }catch(e){}
   return defaultState();
 }
@@ -560,21 +586,32 @@ function buildRound(subject){
   });
 }
 
+// Leveling rule: a topic only gets harder once it's been answered correctly
+// twice in a row at the current tier (no mistakes in between). A topic only
+// gets easier after two mistakes in a row at the current tier — a single
+// slip doesn't knock him down a level, it just flags the topic for a bit
+// more practice. Returns what happened so the UI can explain it.
 function recordAnswer(subject, topicId, wasCorrect){
   const t = STATE[subject].topics[topicId];
+  const tierBefore = t.tier;
   t.attempts++;
+  let leveledUp = false, leveledDown = false;
   if(wasCorrect){
-    t.correct++; t.streak++;
-    if(t.streak >= 2 && t.tier < 3){ t.tier++; t.streak = 0; t.needsReview=false; }
-    if(t.streak >= 2 && t.tier === 3){ t.needsReview=false; }
+    t.correct++; t.correctStreak++; t.wrongStreak = 0;
+    if(t.correctStreak >= 2){
+      t.needsReview = false;
+      if(t.tier < 3){ t.tier++; leveledUp = true; }
+      t.correctStreak = 0;
+    }
   } else {
-    t.streak = 0;
-    if(t.tier > 0) t.tier--;
+    t.wrongStreak++; t.correctStreak = 0;
     t.needsReview = true;
+    if(t.wrongStreak >= 2 && t.tier > 0){ t.tier--; leveledDown = true; t.wrongStreak = 0; }
   }
   for(const id in STATE[subject].topics){ STATE[subject].topics[id].roundsSince++; }
   t.roundsSince = 0;
   saveState(STATE);
+  return { tierBefore, tierAfter: t.tier, leveledUp, leveledDown };
 }
 
 /* ---------------------------------------------------------------------
@@ -658,12 +695,20 @@ function answer(i){
     if(idx === q.correctIndex) btn.classList.add("correct");
     else if(idx === i) btn.classList.add("incorrect");
   });
-  roundResults.push({topicId:q.topicId, correct:wasCorrect});
-  recordAnswer(currentSubject, q.topicId, wasCorrect);
+  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
+  const result = recordAnswer(currentSubject, q.topicId, wasCorrect);
+  roundResults.push({
+    topicId:q.topicId, topicName, correct:wasCorrect,
+    question:q.q, explain:q.explain, leveledUp:result.leveledUp, leveledDown:result.leveledDown
+  });
   const fb = document.getElementById("feedbackZone");
+  const levelNote = result.leveledUp
+    ? `<div class="explain" style="color:#16a34a; font-weight:600;">⬆ Leveled up in ${topicName} — two correct in a row at this level!</div>`
+    : "";
   fb.innerHTML = `
     <div class="feedback ${wasCorrect?"good":"bad"}">${wasCorrect?"Nice one! ✅":"Not quite — here's why:"}</div>
     <div class="explain">${q.explain}</div>
+    ${levelNote}
     <button class="next-btn" onclick="nextQuestion()">${currentIndex+1 < currentRound.length ? "Next question" : "See results"}</button>`;
 }
 
@@ -678,11 +723,42 @@ function renderSummary(){
   const total = roundResults.length;
   const pct = Math.round((correctCount/total)*100);
   const emoji = pct >= 80 ? "🏆" : pct >= 50 ? "👍" : "💪";
+
+  // Group this round's misses by topic so we can tell him exactly what to
+  // focus on and why — using the real explanation from the question he got
+  // wrong, not just a generic "practice more" message.
+  const missesByTopic = {};
+  for(const r of roundResults){
+    if(r.correct) continue;
+    if(!missesByTopic[r.topicId]) missesByTopic[r.topicId] = { topicName:r.topicName, items:[] };
+    missesByTopic[r.topicId].items.push(r);
+  }
+  const leveledUpTopics = [...new Set(roundResults.filter(r=>r.leveledUp).map(r=>r.topicName))];
+
+  let focusHTML = "";
+  const missTopics = Object.values(missesByTopic);
+  if(missTopics.length === 0){
+    focusHTML = `<div class="summary-stat" style="border:none;"><span style="color:#16a34a; font-weight:600;">Perfect round — no gaps to flag. 🎉</span></div>`;
+  } else {
+    focusHTML = missTopics.map(m => `
+      <div class="summary-stat" style="display:block;">
+        <div class="topic-name">${m.topicName} <span style="color:#64748b; font-weight:400;">— missed ${m.items.length}</span></div>
+        <div class="explain" style="margin-top:2px;">${m.items[0].explain}</div>
+      </div>`).join("");
+  }
+  const levelUpHTML = leveledUpTopics.length
+    ? `<p class="explain" style="margin-top:10px;">⬆ Leveled up this round in: <strong>${leveledUpTopics.join(", ")}</strong></p>`
+    : "";
+
   app.innerHTML = `
     <div class="card">
       <div class="big-emoji">${emoji}</div>
       <h1 style="text-align:center;">${correctCount} / ${total} correct</h1>
       <p class="subtitle" style="text-align:center;">${CURRICULUM[currentSubject].label} round complete.</p>
+      ${levelUpHTML}
+      <h1 style="font-size:1.05rem; margin-top:18px;">Focus on next time</h1>
+      ${focusHTML}
+      <p class="footer-note" style="margin-top:12px;">The next round will bring these topics back around more often until they're solid.</p>
       <button class="next-btn" onclick="startRound('${currentSubject}')">Play another round</button>
       <button class="dashboard-btn" onclick="renderDashboard()">View progress</button>
       <button class="back-link" style="margin-top:10px;" onclick="renderHome()">← Home</button>
