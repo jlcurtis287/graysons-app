@@ -9,10 +9,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Grayson's App">
 <link rel="apple-touch-icon" href="icon-192.png">
-<!-- Only used if cross-device sync is turned on below (SYNC_ENABLED = true).
-     Harmless to load otherwise; the app works fully offline either way. -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --blue:#2563eb; --green:#16a34a; --red:#dc2626; --amber:#d97706;
@@ -798,15 +794,8 @@ function loadState(){
   return defaultState();
 }
 function saveState(state){
-  state.updatedAt = Date.now();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  cloudSync(state); // no-op until Firebase is configured, see SYNC section
-}
-// Writes a state we just pulled FROM the cloud back into localStorage without
-// re-triggering a cloud write (it already lives there) — keeps the two in
-// sync without an infinite read/write ping-pong.
-function saveStateLocalOnly(state){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  cloudSync(state); // no-op — local-only by design, see SYNC section
 }
 
 let STATE = loadState();
@@ -952,48 +941,13 @@ function subjectYear(subject){
 }
 
 /* ---------------------------------------------------------------------
-   6. SYNC (Firebase) — keeps Mac + iPad (and any other device) showing the
-   same progress. Uses a single Firestore document, no login/account for
-   Grayson required. Access is gated by PROGRESS_DOC_ID acting as a shared,
-   hard-to-guess key (matched against a Firestore security rule), rather
-   than by user auth — appropriate for a single-family, no-login kids app.
-
-   To activate:
-   1. Fill in FIREBASE_CONFIG with the config object from your Firebase
-      project's web app settings.
-   2. Fill in PROGRESS_DOC_ID with the same random ID used in your
-      Firestore security rule (see SETUP.md for the exact rule text).
-   3. Set SYNC_ENABLED = true.
-   Until all three are done, the app works exactly as before — fully
-   offline, localStorage only, nothing changes.
+   6. SYNC — not used. Progress is stored locally per device/browser only.
+   (Cross-device sync via Firebase was scoped out at the user's request —
+   each device/browser keeps its own separate progress, which is fine for
+   how the app is actually used.)
    --------------------------------------------------------------------- */
-const SYNC_ENABLED = false;
-const FIREBASE_CONFIG = null; // { apiKey:"...", authDomain:"...", projectId:"...", ... }
-const PROGRESS_DOC_ID = null; // e.g. "grayson-9f3a1c7e" — must match the Firestore rule
-
-let fbDb = null;
-if(SYNC_ENABLED && FIREBASE_CONFIG && PROGRESS_DOC_ID && typeof firebase !== "undefined"){
-  try{
-    firebase.initializeApp(FIREBASE_CONFIG);
-    fbDb = firebase.firestore();
-  }catch(e){ fbDb = null; } // misconfigured or offline — app still works locally
-}
-
-// Best-effort push to the cloud. Never blocks or breaks gameplay: local save
-// (localStorage) has already succeeded by the time this is called, so a
-// failed/offline cloud write just means the NEXT successful save catches up.
-function cloudSync(state){
-  if(!fbDb) return;
-  fbDb.collection("progress").doc(PROGRESS_DOC_ID).set(state).catch(()=>{});
-}
-// Pulls whatever's currently in the cloud, or null if sync is off/offline/
-// nothing saved there yet.
-function cloudPull(){
-  if(!fbDb) return Promise.resolve(null);
-  return fbDb.collection("progress").doc(PROGRESS_DOC_ID).get()
-    .then(snap => snap.exists ? snap.data() : null)
-    .catch(()=>null);
-}
+function cloudSync(state){ /* no-op — local-only by design */ }
+function cloudPull(){ return Promise.resolve(null); }
 
 /* ---------------------------------------------------------------------
    7. UI
@@ -1018,7 +972,7 @@ function renderHome(){
       <p class="subtitle">Pick a subject to get started.</p>
       <div class="subject-grid">${subjectButtons}</div>
       <button class="dashboard-btn" onclick="renderDashboard()">View progress</button>
-      <p class="footer-note">${SYNC_ENABLED ? "Progress syncs across devices. " : "Runs fully offline once loaded. "}No account needed to play.</p>
+      <p class="footer-note">Runs fully offline once loaded. No account needed to play.</p>
     </div>`;
 }
 
@@ -1207,29 +1161,6 @@ window.renderHome = renderHome;
 window.renderDashboard = renderDashboard;
 
 renderHome();
-
-// Cross-device sync check: render immediately from local state (above) so
-// the app is never blocked waiting on a network call, then — if sync is on
-// — pull whatever's in the cloud and adopt it ONLY if it's actually newer
-// than what's on this device. Whichever side (local or cloud) has the more
-// recent `updatedAt` wins; the loser is overwritten to match, so both sides
-// converge on one shared progress record instead of silently forking.
-if(SYNC_ENABLED){
-  cloudPull().then(cloudState => {
-    if(!cloudState) return; // nothing saved in the cloud yet — this device's save will seed it
-    const migrated = migrateState(cloudState);
-    if((migrated.updatedAt || 0) > (STATE.updatedAt || 0)){
-      STATE = migrated;
-      saveStateLocalOnly(STATE);
-      // Don't yank the screen out from under a round in progress — the
-      // merged state is already saved locally, so it'll be reflected the
-      // moment he returns to Home or the Dashboard.
-      if(!currentRound) renderHome();
-    } else if((STATE.updatedAt || 0) > (migrated.updatedAt || 0)){
-      cloudSync(STATE); // this device is ahead — push it up so the cloud catches up
-    }
-  });
-}
 </script>
 </body>
 </html>
