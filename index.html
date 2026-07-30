@@ -221,6 +221,45 @@ function makeFactMCQ(correct, wrongs, explain, q){
   return {q, options, correctIndex, explain};
 }
 
+// Correctly forms -ing / -ed verb endings, respecting the "drop the silent e"
+// spelling rule (explore -> exploring/explored, not exploreing/exploreed).
+// Plain string concatenation broke on any verb ending in a silent e.
+function ingForm(v){
+  if(/[^aeiou]e$/.test(v)) return v.slice(0,-1) + "ing"; // explore -> exploring
+  return v + "ing";
+}
+function edForm(v){
+  if(/[^aeiou]e$/.test(v)) return v + "d"; // explore -> explored
+  return v + "ed";
+}
+
+// Short, plain-English definitions for grammar terms, appended to
+// explanations so a 6-year-old learns what the WORD means, not just the
+// answer to this one question.
+const GLOSSARY = {
+  "Noun": "a person, place, or thing",
+  "Verb": "a doing or action word",
+  "Adjective": "a word that describes something",
+  "Adverb": "a word that describes how something is done",
+  "Pronoun": "a word that stands in for a name, like he, she, or it",
+  "Conjunction": "a joining word, like and, but, or because",
+  "Preposition": "a word that shows where something is, like under or beside",
+  "Proper noun": "the special name of a person or place, like Grayson or London",
+  "Common noun": "a general name for a thing, not its own special name",
+  "Complete sentence": "a full thought that makes sense on its own",
+  "Sentence fragment": "a piece of a sentence that isn't a full thought yet",
+  "Simple sentence": "a sentence with just one idea in it",
+  "Compound sentence": "two ideas joined together, usually with a word like and or but",
+  "Subordinate clause": "a part of a sentence that can't stand alone",
+  "Progressive tense": "shows something happening right now",
+  "Future tense": "shows something that hasn't happened yet, but will",
+  "Present perfect tense": "shows something that has already happened",
+};
+function withDef(term){
+  const def = GLOSSARY[term];
+  return def ? ` (${term.toLowerCase()} = ${def})` : "";
+}
+
 /* ---------------------------------------------------------------------
    3. QUESTION CONTENT
    - math / english: procedurally generated, unlimited variety.
@@ -426,22 +465,22 @@ G.english.word_classes = [
     const isNoun=Math.random()<0.5; const word=isNoun?pick(nouns):pick(verbs);
     const correct=isNoun?"Noun":"Verb";
     const {options,correctIndex}=makeMCQ(correct,["Noun","Verb","Adjective"]);
-    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}.`}; },
+    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const adjs=["shiny","enormous","curious","rusty"]; const advs=["quickly","carefully","loudly","bravely"];
     const isAdj=Math.random()<0.5; const word=isAdj?pick(adjs):pick(advs);
     const correct=isAdj?"Adjective":"Adverb";
     const {options,correctIndex}=makeMCQ(correct,["Adjective","Adverb","Noun"]);
-    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is an ${correct.toLowerCase()}.`}; },
+    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is an ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const pronouns=["he","she","it","they","we"]; const conjunctions=["and","but","because","although"];
     const isPro=Math.random()<0.5; const word=isPro?pick(pronouns):pick(conjunctions);
     const correct=isPro?"Pronoun":"Conjunction";
     const {options,correctIndex}=makeMCQ(correct,["Pronoun","Conjunction","Preposition"]);
-    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}.`}; },
+    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const preps=["under","beside","through","between"]; const properNouns=["London","Grayson","Tuesday","Mars"];
     const isPrep=Math.random()<0.5; const word=isPrep?pick(preps):pick(properNouns);
     const correct=isPrep?"Preposition":"Proper noun";
     const {options,correctIndex}=makeMCQ(correct,["Preposition","Proper noun","Common noun"]);
-    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}.`}; }
+    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; }
 ];
 
 // ---- ENGLISH: Sentence Structure ----
@@ -451,18 +490,18 @@ G.english.sentence_structure = [
     const correct=isComplete?"Complete sentence":"Sentence fragment";
     const {options,correctIndex}=makeMCQ(correct,["Complete sentence","Sentence fragment"]);
     return {q:`Is this a complete sentence or a fragment? "${text}"`, options, correctIndex,
-      explain:`"${text}" is a ${correct.toLowerCase()}.`}; },
+      explain:`"${text}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const simple=["The car stopped.","She likes science."]; const compound=["The car stopped, and the driver got out.","She likes science, but she loves art more."];
     const isSimple=Math.random()<0.5; const text=isSimple?pick(simple):pick(compound);
     const correct=isSimple?"Simple sentence":"Compound sentence";
     const {options,correctIndex}=makeMCQ(correct,["Simple sentence","Compound sentence"]);
     return {q:`Is this a simple or compound sentence? "${text}"`, options, correctIndex,
-      explain:`It's a ${correct.toLowerCase()} — ${isSimple?"one idea":"two ideas joined by a conjunction"}.`}; },
+      explain:`It's a ${correct.toLowerCase()}${withDef(correct)} — ${isSimple?"one idea":"two ideas joined by a conjunction"}.`}; },
   () => { const sentences=["Although it was raining, we went outside.","When the bell rang, everyone stopped."];
     const text=pick(sentences); const correct="Subordinate clause";
     const {options,correctIndex}=makeMCQ(correct,["Subordinate clause","Main clause","Compound sentence"]);
     return {q:`In "${text}", what type of clause comes first?`, options, correctIndex,
-      explain:`It starts with a subordinate clause (it can't stand alone as a sentence).`}; },
+      explain:`It starts with a subordinate clause${withDef(correct)}.`}; },
   () => { const a="The rocket launched."; const b="Everyone cheered.";
     const correct=`${a.slice(0,-1)}, and ${b.toLowerCase()}`;
     const wrongs=[`${a} ${b}`,`${a.slice(0,-1)} but ${b.toLowerCase()}`];
@@ -501,21 +540,22 @@ G.english.punctuation = [
 G.english.tenses = [
   () => { const pairs=[["walk","walked"],["jump","jumped"],["build","built"],["run","ran"],["go","went"]];
     const [present,past]=pick(pairs); const correct=past;
-    const {options,correctIndex}=makeMCQ(correct,[present, present+"ed", past+"ed"]);
-    return {q:`What is the past tense of "${present}"?`, options, correctIndex, explain:`"${present}" → "${correct}".`}; },
-  () => { const verbs=["build","design","explore"]; const v=pick(verbs); const correct=`${v}ing`;
-    const {options,correctIndex}=makeMCQ(correct,[v, v+"ed", v+"s"]);
+    const {options,correctIndex}=makeMCQ(correct,[present, edForm(present), past+"ed"]);
+    return {q:`What is the past tense of "${present}"?`, options, correctIndex,
+      explain:`"${present}" → "${correct}" (past tense = something that already happened).`}; },
+  () => { const verbs=["build","design","paint"]; const v=pick(verbs); const correct=ingForm(v);
+    const {options,correctIndex}=makeMCQ(correct,[v, edForm(v), v+"s"]);
     return {q:`Which shows the action happening right now (progressive tense) for "${v}"? "Grayson is ___ a tower."`,
-      options, correctIndex, explain:`Progressive tense uses "is/are + verb-ing": "${correct}"`}; },
+      options, correctIndex, explain:`Progressive tense uses "is/are + verb-ing": "${correct}"${withDef("Progressive tense")}.`}; },
   () => { const verbs=["explore","build","paint"]; const v=pick(verbs); const correct=`will ${v}`;
-    const {options,correctIndex}=makeMCQ(correct,[`${v}ed`,`is ${v}ing`,v]);
+    const {options,correctIndex}=makeMCQ(correct,[edForm(v),`is ${ingForm(v)}`,v]);
     return {q:`Which shows the future tense for "${v}"? "Tomorrow, Grayson ___ a rocket."`, options, correctIndex,
-      explain:`Future tense: "will + verb": "${correct}"`}; },
+      explain:`Future tense: "will + verb": "${correct}"${withDef("Future tense")}.`}; },
   () => { const pairs=[["walk","walked"],["build","built"],["see","seen"]]; const [present,past]=pick(pairs);
     const correct=`has ${past}`;
-    const {options,correctIndex}=makeMCQ(correct,[`have ${present}`,`is ${present}ing`,past]);
+    const {options,correctIndex}=makeMCQ(correct,[`have ${present}`,`is ${ingForm(present)}`,past]);
     return {q:`Which shows the present perfect tense? "Grayson ___ the whole model."`, options, correctIndex,
-      explain:`Present perfect: "has/have + past participle": "${correct}"`}; }
+      explain:`Present perfect: "has/have + past participle": "${correct}"${withDef("Present perfect tense")}.`}; }
 ];
 
 // ---- ENGLISH: Vocabulary & Spelling ----
@@ -529,8 +569,10 @@ G.english.vocabulary = [
     const {options,correctIndex}=makeMCQ(correct,["huge","quick","joyful"]);
     return {q:`Which word means the opposite of "${word}"?`, options, correctIndex, explain:`"${ant}" is an antonym for "${word}".`}; },
   () => { const roots=[["un","happy","not happy"],["re","build","build again"],["dis","like","not like"]];
+    const otherPrefixes=["un","re","dis"];
     const [prefix,root,meaning]=pick(roots); const correct=`${prefix}${root}`;
-    const {options,correctIndex}=makeMCQ(correct,[`${root}${prefix}`,`${root}ing`,root]);
+    const wrongPrefixes = otherPrefixes.filter(p=>p!==prefix).map(p=>`${p}${root}`);
+    const {options,correctIndex}=makeMCQ(correct,[...wrongPrefixes, root]);
     return {q:`Add a prefix to "${root}" to mean "${meaning}".`, options, correctIndex,
       explain:`"${prefix}" + "${root}" = "${correct}" (${meaning}).`}; },
   () => { const pairs=[["their","there"],["to","too"],["hear","here"],["write","right"]];
@@ -701,7 +743,9 @@ G.history.map_capital = [
 const STORAGE_KEY = "graysons_app_state_v1";
 
 function defaultTopicState(){
-  return { tier:1, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0 };
+  // Starts at true tier 0 ("Basics") — a topic he hasn't played yet should
+  // never look like it's already at "Advanced" before he's answered anything.
+  return { tier:0, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0 };
 }
 function defaultState(){
   const s = { history:[] };
@@ -726,7 +770,7 @@ function migrateState(s){
       if(existing.correctStreak === undefined) existing.correctStreak = existing.streak || 0;
       if(existing.wrongStreak === undefined) existing.wrongStreak = 0;
       delete existing.streak;
-      if(existing.tier === undefined) existing.tier = 1;
+      if(existing.tier === undefined) existing.tier = 0;
       if(existing.attempts === undefined) existing.attempts = 0;
       if(existing.correct === undefined) existing.correct = 0;
       if(existing.needsReview === undefined) existing.needsReview = false;
@@ -759,47 +803,75 @@ let STATE = loadState();
    5. ADAPTIVE ENGINE
    --------------------------------------------------------------------- */
 
-// Ranks a subject's topics by priority: flagged-for-review first, then
-// whichever topic has gone the most rounds without being practiced. Shared
-// by both round-building strategies below.
-function rankTopicsByPriority(subject){
-  const topics = CURRICULUM[subject].topics.map(t=>t.id);
-  const s = STATE[subject].topics;
-  return [...topics].sort((a,b)=>{
-    const sa=s[a], sb=s[b];
-    if(sa.needsReview !== sb.needsReview) return sa.needsReview ? -1 : 1;
-    return sb.roundsSince - sa.roundsSince;
-  });
+// Once-per-round bookkeeping: topics NOT visited this round get "older"
+// (roundsSince++), topics visited get reset to 0 ("just practiced"). This
+// used to run per-answer, which over-counted multi-question topics (like
+// History's primer-then-several-questions visits) and skewed rotation.
+function bumpRoundCounters(subject, touchedTopicIds){
+  const touched = new Set(touchedTopicIds);
+  for(const t of CURRICULUM[subject].topics){
+    const s = STATE[subject].topics[t.id];
+    s.roundsSince = touched.has(t.id) ? 0 : s.roundsSince + 1;
+  }
 }
 
-// Standard (math/english) round: every topic covered at least once (no-gaps
-// guarantee), extra slots up to 10 go to the highest-priority topics.
-function pickTopicOrder(subject){
-  const topics = CURRICULUM[subject].topics.map(t=>t.id);
-  const base = shuffle(topics);
-  const extrasNeeded = 10 - base.length;
-  const ranked = rankTopicsByPriority(subject);
-  const extras = [];
-  for(let i=0;i<extrasNeeded;i++){ extras.push(ranked[i % ranked.length]); }
-  return shuffle([...base, ...extras]).slice(0,10);
+// Generates one question for a topic at its current tier, retrying a few
+// times if it collides with a question already used elsewhere in this same
+// round (procedural generators occasionally roll identical numbers; fixed
+// content like History can't collide since each visit uses distinct indices).
+function questionForTopic(subject, topicId, usedTexts){
+  const tier = STATE[subject].topics[topicId].tier;
+  const gens = G[subject][topicId];
+  let q, attempts = 0;
+  do {
+    q = gens[Math.min(tier, gens.length-1)]();
+    attempts++;
+  } while(usedTexts.has(q.q) && attempts < 15);
+  usedTexts.add(q.q);
+  return { topicId, tier, ...q };
 }
 
 function questionsForTopicOrder(subject, order){
-  return order.map(topicId => {
-    const tier = STATE[subject].topics[topicId].tier;
-    const gens = G[subject][topicId];
-    const q = gens[Math.min(tier, gens.length-1)]();
-    return { topicId, tier, ...q };
-  });
+  const usedTexts = new Set();
+  return order.map(topicId => questionForTopic(subject, topicId, usedTexts));
 }
 
-// History round: pick a handful of topics by priority; for each, unlock
-// more of its 4 fixed comprehension questions as its tier rises (2 at
-// tier0, 3 at tier1, all 4 at tier2+), primer shown once before the first
-// question of that topic.
+// Standard (math/english) round: exactly one question per topic, every
+// topic covered, nothing repeated within the round. Extra reinforcement for
+// weak topics happens through the dedicated bonus round instead of padding
+// the main round with repeats — that way a gap gets focused practice at its
+// own level without ever colliding with (or crowding out) other topics.
+function pickTopicOrder(subject){
+  return shuffle(CURRICULUM[subject].topics.map(t=>t.id));
+}
+
+function buildRound(subject){
+  if(CURRICULUM[subject].isReading) return buildHistoryRound(subject);
+  const order = pickTopicOrder(subject);
+  bumpRoundCounters(subject, order);
+  return questionsForTopicOrder(subject, order);
+}
+
+// History topic selection: breadth first. Picks whichever topics have gone
+// longest without being visited, so all 9 topics rotate through before any
+// one of them repeats. (Topics he's struggling with still get attention —
+// via the bonus round below — rather than monopolizing the main rotation,
+// which is what was causing the same history questions to resurface every
+// round.)
 const HISTORY_TOPICS_PER_ROUND = 3;
+function pickHistoryTopicsForRotation(subject, count){
+  const topics = CURRICULUM[subject].topics.map(t=>t.id);
+  const s = STATE[subject].topics;
+  const byStaleness = [...topics].sort((a,b) => s[b].roundsSince - s[a].roundsSince);
+  return byStaleness.slice(0, count);
+}
+
+// History round: pick a handful of topics; for each, unlock more of its 4
+// fixed comprehension questions as its tier rises (2 at tier0, 3 at tier1,
+// all 4 at tier2+), primer shown once before the first question of that topic.
 function buildHistoryRound(subject, topicIdsOverride){
-  const topicIds = topicIdsOverride || rankTopicsByPriority(subject).slice(0, HISTORY_TOPICS_PER_ROUND);
+  const topicIds = topicIdsOverride || pickHistoryTopicsForRotation(subject, HISTORY_TOPICS_PER_ROUND);
+  if(!topicIdsOverride) bumpRoundCounters(subject, topicIds);
   const out = [];
   for(const topicId of topicIds){
     const tier = STATE[subject].topics[topicId].tier;
@@ -814,15 +886,11 @@ function buildHistoryRound(subject, topicIdsOverride){
   return out;
 }
 
-function buildRound(subject){
-  if(CURRICULUM[subject].isReading) return buildHistoryRound(subject);
-  return questionsForTopicOrder(subject, pickTopicOrder(subject));
-}
-
 // Bonus round: focused practice on exactly the topics that gave trouble
-// last round. Math/English cycle through them to fill 10 slots (fresh
-// procedural questions each time); History revisits each weak topic's
-// primer + its currently-unlocked questions.
+// last round, at their CURRENT (already-weak) tier — this is deliberately
+// where repeats/reinforcement live, so the main round stays gap-free and a
+// struggling topic gets deeper practice without skipping ahead to harder
+// content or crowding out topics he's already solid on.
 function buildBonusRound(subject, topicIds){
   if(!topicIds || !topicIds.length) return [];
   if(CURRICULUM[subject].isReading) return buildHistoryRound(subject, topicIds);
@@ -836,7 +904,9 @@ function buildBonusRound(subject, topicIds){
 // twice in a row at the current tier (no mistakes in between). A topic only
 // gets easier after two mistakes in a row at the current tier — a single
 // slip doesn't knock him down a level, it just flags the topic for a bit
-// more practice. Returns what happened so the UI can explain it.
+// more practice. Tier is capped 0-3 (Year 2 Basics through Year 4), so a
+// mastered topic never goes past the Year 4 ceiling. Returns what happened
+// so the UI can explain it.
 function recordAnswer(subject, topicId, wasCorrect){
   const t = STATE[subject].topics[topicId];
   const tierBefore = t.tier;
@@ -854,8 +924,6 @@ function recordAnswer(subject, topicId, wasCorrect){
     t.needsReview = true;
     if(t.wrongStreak >= 2 && t.tier > 0){ t.tier--; leveledDown = true; t.wrongStreak = 0; }
   }
-  for(const id in STATE[subject].topics){ STATE[subject].topics[id].roundsSince++; }
-  t.roundsSince = 0;
   saveState(STATE);
   return { tierBefore, tierAfter: t.tier, leveledUp, leveledDown };
 }
@@ -937,7 +1005,7 @@ function renderPrimer(q){
   const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
   app.innerHTML = `
     <div class="card">
-      <button class="back-link" onclick="renderHome()">← Exit</button>
+      <button class="back-link" onclick="renderHome()">Exit</button>
       <span class="qtag">${topicName}</span>
       <p class="primer-text">📖 ${q.primer}</p>
       <button class="next-btn" onclick="acknowledgePrimer()">I've read it — let's go!</button>
@@ -961,7 +1029,7 @@ function renderQuestion(){
   const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
   app.innerHTML = `
     <div class="card">
-      <button class="back-link" onclick="renderHome()">← Exit</button>
+      <button class="back-link" onclick="renderHome()">Exit</button>
       <div class="progress-strip">${dots}</div>
       <span class="qtag${currentRoundMode==='bonus'?' bonus':''}">${currentRoundMode==='bonus'?'Bonus · ':''}${topicName} · Q${currentIndex+1} of ${total}</span>
       <p class="question">${q.q}</p>
@@ -1057,11 +1125,11 @@ function renderSummary(){
       ${levelUpHTML}
       <h1 style="font-size:1.05rem; margin-top:18px;">Focus on next time</h1>
       ${focusHTML}
-      <p class="footer-note" style="margin-top:12px;">${missTopics.length ? "The next round will bring these topics back around more often until they're solid." : ""}</p>
+      <p class="footer-note" style="margin-top:12px;">${missTopics.length ? "These stay at the same level until solid — use the bonus round below for focused extra practice." : ""}</p>
       ${bonusBtnHTML}
       <button class="next-btn" onclick="startRound('${currentSubject}')">Play another round</button>
       <button class="dashboard-btn" onclick="renderDashboard()">View progress</button>
-      <button class="back-link" style="margin-top:10px;" onclick="renderHome()">← Home</button>
+      <button class="back-link" style="margin-top:10px;" onclick="renderHome()">Home</button>
     </div>`;
 }
 
@@ -1075,8 +1143,9 @@ function renderDashboard(){
     const rows = cfg.topics.map(t=>{
       const s = STATE[subject].topics[t.id];
       const acc = s.attempts ? Math.round((s.correct/s.attempts)*100) : null;
+      const gapTag = s.needsReview ? ` <span style="color:#d97706; font-weight:700;">· gap</span>` : "";
       return `<div class="summary-stat">
-        <span class="topic-name">${t.name}</span>
+        <span class="topic-name">${t.name}${gapTag}</span>
         <span><span class="tier-badge t${s.tier}">${cfg.tierLabels[s.tier]}</span> ${acc!==null?` · ${acc}%`:""}</span>
       </div>`;
     }).join("");
@@ -1084,7 +1153,7 @@ function renderDashboard(){
   }).join("");
   app.innerHTML = `
     <div class="card">
-      <button class="back-link" onclick="renderHome()">← Home</button>
+      <button class="back-link" onclick="renderHome()">Home</button>
       <h1>Progress</h1>
       <p class="subtitle">This is how the app tracks and closes gaps over time.</p>
       ${sections}
