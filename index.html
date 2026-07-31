@@ -122,8 +122,12 @@ const CURRICULUM = {
   math: {
     label: "Math",
     icon: "🚗",
-    tierLabels: ["Year 2 (Basics)","Year 2 (Advanced)","Year 3","Year 4"],
-    yearForTier: [2,2,3,4],
+    // 9 tiers: Basic/Intermediate/Advanced repeated for Year 2, then Year 3,
+    // then Year 4 (index 8 = Year 4 Advanced = the ceiling).
+    tierLabels: ["Year 2 · Basic","Year 2 · Intermediate","Year 2 · Advanced",
+                 "Year 3 · Basic","Year 3 · Intermediate","Year 3 · Advanced",
+                 "Year 4 · Basic","Year 4 · Intermediate","Year 4 · Advanced"],
+    yearForTier: [2,2,2,3,3,3,4,4,4],
     topics: [
       {id:"place_value",  name:"Number & Place Value"},
       {id:"add_sub",      name:"Addition & Subtraction"},
@@ -138,8 +142,10 @@ const CURRICULUM = {
   english: {
     label: "English",
     icon: "📚",
-    tierLabels: ["Year 2 (Basics)","Year 2 (Advanced)","Year 3","Year 4"],
-    yearForTier: [2,2,3,4],
+    tierLabels: ["Year 2 · Basic","Year 2 · Intermediate","Year 2 · Advanced",
+                 "Year 3 · Basic","Year 3 · Intermediate","Year 3 · Advanced",
+                 "Year 4 · Basic","Year 4 · Intermediate","Year 4 · Advanced"],
+    yearForTier: [2,2,2,3,3,3,4,4,4],
     topics: [
       {id:"word_classes",       name:"Word Classes"},
       {id:"sentence_structure", name:"Sentences & Clauses"},
@@ -259,6 +265,7 @@ const GLOSSARY = {
   "Future tense": "shows something that hasn't happened yet, but will",
   "Present perfect tense": "shows something that has already happened",
   "Past tense": "shows something that already happened",
+  "Past perfect tense": "shows something that had already happened before another past event",
 };
 function withDef(term){
   const def = GLOSSARY[term];
@@ -285,57 +292,89 @@ function introSentence(...terms){
 const G = { math:{}, english:{}, history:{} };
 
 // ---- MATH: Place Value ----
+// 9 tiers: Year2 Basic/Intermediate/Advanced, Year3 B/I/A, Year4 B/I/A —
+// number range and rounding granularity both step up smoothly.
 G.math.place_value = [
-  () => { // tier0: numbers to 100, tens/ones
-    const n = randInt(11,99);
-    const correct = Math.floor(n/10)*10;
-    const {options,correctIndex} = makeMCQ(correct, [correct-10,correct+10,correct+1,n]);
+  () => { const n=randInt(11,20); const correct=Math.floor(n/10)*10;
+    const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct+1,n]);
     return {q:`In the number ${n}, what is the value of the tens digit?`, options, correctIndex,
-      explain:`${n} = ${Math.floor(n/10)} tens and ${n%10} ones, so the tens digit is worth ${correct}.`};
-  },
-  () => { // tier1: numbers to 1000, rounding to nearest 10
-    const n = randInt(100,999);
-    const correct = Math.round(n/10)*10;
-    const {options,correctIndex} = makeMCQ(correct, [correct-10,correct+10,n]);
-    return {q:`Round ${n} to the nearest 10.`, options, correctIndex, explain:`${n} rounds to ${correct}.`};
-  },
-  () => { // tier2: numbers to 10,000, rounding to nearest 100, negatives
-    const n = randInt(1000,9999);
-    const correct = Math.round(n/100)*100;
-    const {options,correctIndex} = makeMCQ(correct, [correct-100,correct+100,n]);
-    return {q:`Round ${n} to the nearest 100.`, options, correctIndex, explain:`${n} rounds to ${correct}.`};
-  },
-  () => { // tier3: ordering negative numbers / rounding to 1000
-    const n = randInt(1000,99999);
-    const correct = Math.round(n/1000)*1000;
-    const {options,correctIndex} = makeMCQ(correct, [correct-1000,correct+1000,n]);
-    return {q:`Round ${n} to the nearest 1,000.`, options, correctIndex, explain:`${n} rounds to ${correct}.`};
-  }
+      explain:`${n} = ${Math.floor(n/10)} tens and ${n%10} ones, so the tens digit is worth ${correct}.`}; },
+  () => { const n=randInt(11,99); const correct=Math.floor(n/10)*10;
+    const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct+1,n]);
+    return {q:`In the number ${n}, what is the value of the tens digit?`, options, correctIndex,
+      explain:`${n} = ${Math.floor(n/10)} tens and ${n%10} ones, so the tens digit is worth ${correct}.`}; },
+  () => { const n=randInt(11,99); const correct=Math.round(n/10)*10;
+    const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,n]);
+    return {q:`Round ${n} to the nearest 10.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
+  () => { const n=randInt(100,999); const correct=Math.round(n/10)*10;
+    const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,n]);
+    return {q:`Round ${n} to the nearest 10.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
+  () => { const n=randInt(100,999); const correct=Math.round(n/100)*100;
+    const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,n]);
+    return {q:`Round ${n} to the nearest 100.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
+  () => { const n=randInt(500,4999); const correct=Math.round(n/100)*100;
+    const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,n]);
+    return {q:`Round ${n} to the nearest 100.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
+  () => { const n=randInt(1000,9999); const correct=Math.round(n/100)*100;
+    const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,n]);
+    return {q:`Round ${n} to the nearest 100.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
+  () => { const n=randInt(1000,9999); const correct=Math.round(n/1000)*1000;
+    const {options,correctIndex}=makeMCQ(correct,[correct-1000,correct+1000,n]);
+    return {q:`Round ${n} to the nearest 1,000.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
+  () => { const n=randInt(1000,99999); const correct=Math.round(n/1000)*1000;
+    const {options,correctIndex}=makeMCQ(correct,[correct-1000,correct+1000,n]);
+    return {q:`Round ${n} to the nearest 1,000.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
 ];
 
 // ---- MATH: Addition & Subtraction ----
 G.math.add_sub = [
-  () => { const a=randInt(10,49), b=randInt(10,49-a%10<10?9:9); const correct=a+b;
+  () => { const a=randInt(1,9), b=randInt(1,9); const correct=a+b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-1,correct+1,correct-2,correct+2]);
+    return {q:`${a} + ${b} = ?`, options, correctIndex, explain:`${a} + ${b} = ${correct}.`}; },
+  () => { const a=randInt(10,49), b=randInt(10,40); const correct=a+b;
     const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-1,correct+1]);
     return {q:`${a} + ${b} = ?`, options, correctIndex, explain:`${a} + ${b} = ${correct}.`}; },
-  () => { const a=randInt(20,89), b=randInt(15,79); const useSub = Math.random()<0.5;
+  () => { const a=randInt(10,49), b=randInt(10,49); const useSub=Math.random()<0.5;
     const correct = useSub ? Math.abs(a-b) : a+b;
     const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-1,correct+1]);
     return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
       explain:`Answer: ${correct}.`}; },
-  () => { const a=randInt(100,899), b=randInt(100,899); const useSub = Math.random()<0.5;
+  () => { const a=randInt(20,89), b=randInt(15,79); const useSub=Math.random()<0.5;
+    const correct = useSub ? Math.abs(a-b) : a+b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-1,correct+1]);
+    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
+      explain:`Answer: ${correct}.`}; },
+  () => { const a=randInt(100,499), b=randInt(100,499); const useSub=Math.random()<0.5;
     const correct = useSub ? Math.abs(a-b) : a+b;
     const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-100,correct+100]);
     return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
       explain:`Answer: ${correct}.`}; },
-  () => { const a=randInt(1000,8999), b=randInt(100,999); const useSub = Math.random()<0.5;
+  () => { const a=randInt(100,899), b=randInt(100,899); const useSub=Math.random()<0.5;
+    const correct = useSub ? Math.abs(a-b) : a+b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-100,correct+100]);
+    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
+      explain:`Answer: ${correct}.`}; },
+  () => { const a=randInt(300,999), b=randInt(200,900); const useSub=Math.random()<0.5;
+    const correct = useSub ? Math.abs(a-b) : a+b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,correct-10,correct+10]);
+    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
+      explain:`Answer: ${correct}.`}; },
+  () => { const a=randInt(1000,8999), b=randInt(100,999); const useSub=Math.random()<0.5;
     const correct = useSub ? a-b : a+b;
     const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,correct-10,correct+10]);
-    return {q: useSub?`${a} - ${b} = ?`:`${a} + ${b} = ?`, options, correctIndex, explain:`Answer: ${correct}.`}; }
+    return {q: useSub?`${a} - ${b} = ?`:`${a} + ${b} = ?`, options, correctIndex, explain:`Answer: ${correct}.`}; },
+  () => { const a=randInt(1000,9999), b=randInt(1000,9999); const useSub=Math.random()<0.5;
+    const correct = useSub ? Math.abs(a-b) : a+b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,correct-10,correct+10]);
+    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
+      explain:`Answer: ${correct}.`}; },
 ];
 
 // ---- MATH: Multiplication & Division ----
 G.math.mult_div = [
+  () => { const table=pick([2,5,10]); const n=randInt(1,10); const correct=table*n;
+    const {options,correctIndex}=makeMCQ(correct,[correct-table,correct+table,correct+1]);
+    return {q:`${table} × ${n} = ?`, options, correctIndex, explain:`${table} × ${n} = ${correct}.`}; },
   () => { const table=pick([2,5,10]); const n=randInt(1,12); const correct=table*n;
     const {options,correctIndex}=makeMCQ(correct,[correct-table,correct+table,correct+1]);
     return {q:`${table} × ${n} = ?`, options, correctIndex, explain:`${table} × ${n} = ${correct}.`}; },
@@ -346,7 +385,13 @@ G.math.mult_div = [
     const correct=table*n;
     const {options,correctIndex}=makeMCQ(correct,[correct-table,correct+table,correct+1]);
     return {q:`${table} × ${n} = ?`, options, correctIndex, explain:`${table} × ${n} = ${correct}.`}; },
+  () => { const a=randInt(11,29), b=randInt(2,9); const correct=a*b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-b,correct+b,correct-a]);
+    return {q:`${a} × ${b} = ?`, options, correctIndex, explain:`${a} × ${b} = ${correct}.`}; },
   () => { const a=randInt(11,49), b=randInt(2,9); const correct=a*b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-b,correct+b,correct-a]);
+    return {q:`${a} × ${b} = ?`, options, correctIndex, explain:`${a} × ${b} = ${correct}.`}; },
+  () => { const a=randInt(20,79), b=randInt(3,9); const correct=a*b;
     const {options,correctIndex}=makeMCQ(correct,[correct-b,correct+b,correct-a]);
     return {q:`${a} × ${b} = ?`, options, correctIndex, explain:`${a} × ${b} = ${correct}.`}; },
   () => { const divisor=randInt(3,9); const quotient=randInt(4,15); const rem=randInt(1,divisor-1);
@@ -354,83 +399,167 @@ G.math.mult_div = [
     const wrongs=[`${quotient} r${(rem+1)%divisor}`,`${quotient+1} r${rem}`,`${quotient-1} r${rem}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`${dividend} ÷ ${divisor} = ? (give remainder)`, options, correctIndex,
-      explain:`${divisor} × ${quotient} = ${divisor*quotient}, remainder ${rem}.`}; }
+      explain:`${divisor} × ${quotient} = ${divisor*quotient}, remainder ${rem}.`}; },
+  () => { const a=randInt(100,299), b=randInt(2,9); const correct=a*b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-b,correct+b,correct-a]);
+    return {q:`${a} × ${b} = ?`, options, correctIndex, explain:`${a} × ${b} = ${correct}.`}; },
+  () => { const a=randInt(11,30), b=randInt(11,20); const correct=a*b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-a,correct+a,correct-b]);
+    return {q:`${a} × ${b} = ?`, options, correctIndex, explain:`${a} × ${b} = ${correct}.`}; },
 ];
 
 // ---- MATH: Fractions & Decimals ----
 G.math.fractions = [
+  () => { const denom=2; const noun=pick(["shape","pizza","cake","chocolate bar"]); const correct=`1/${denom}`;
+    const wrongs=[`1/4`,`${denom-1}/${denom}`,`2/${denom}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs);
+    return {q:`A ${noun} is split into ${denom} equal parts and 1 part is shaded. What fraction is shaded?`,
+      options, correctIndex, explain:`1 shaded part out of ${denom} equal parts = 1/${denom}.`}; },
   () => { const denom=pick([2,4]); const correct=`1/${denom}`;
     const wrongs=[`1/${denom===2?4:2}`,`${denom-1}/${denom}`,`2/${denom}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
     return {q:`A shape is split into ${denom} equal parts and 1 part is shaded. What fraction is shaded?`,
       options, correctIndex, explain:`1 shaded part out of ${denom} equal parts = 1/${denom}.`}; },
+  () => { const denom=pick([2,3]); const mult=randInt(2,3);
+    const correct=`${1*mult}/${denom*mult}`;
+    const wrongs=[`1/${denom}`,`${mult}/${denom}`,`${1*mult}/${denom+mult}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs);
+    return {q:`Which fraction is equivalent to 1/${denom}?`, options, correctIndex,
+      explain:`Multiply top and bottom by ${mult}: 1/${denom} = ${1*mult}/${denom*mult}.`}; },
   () => { const denom=pick([2,3,4,5]); const mult=randInt(2,4);
     const correct=`${1*mult}/${denom*mult}`;
     const wrongs=[`1/${denom}`,`${mult}/${denom}`,`${1*mult}/${denom+mult}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
     return {q:`Which fraction is equivalent to 1/${denom}?`, options, correctIndex,
       explain:`Multiply top and bottom by ${mult}: 1/${denom} = ${1*mult}/${denom*mult}.`}; },
+  () => { const denom=pick([2,4]); const whole=randInt(20,60); const correct=(whole/denom);
+    const {options,correctIndex}=makeMCQ(correct,[correct+denom,correct-denom,whole/2]);
+    return {q:`What is 1/${denom} of ${whole}?`, options, correctIndex, explain:`${whole} ÷ ${denom} = ${correct}.`}; },
   () => { const denom=pick([2,4,5,10]); const whole=randInt(20,100); const correct=(whole/denom);
     const {options,correctIndex}=makeMCQ(correct,[correct+denom,correct-denom,whole/2]);
     return {q:`What is 1/${denom} of ${whole}?`, options, correctIndex, explain:`${whole} ÷ ${denom} = ${correct}.`}; },
   () => { const tenths=randInt(1,9); const correct=`0.${tenths}`;
     const wrongs=[`${tenths}.0`,`0.0${tenths}`,`1.${tenths}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
-    return {q:`Write ${tenths}/10 as a decimal.`, options, correctIndex, explain:`${tenths}/10 = 0.${tenths}.`}; }
+    return {q:`Write ${tenths}/10 as a decimal.`, options, correctIndex, explain:`${tenths}/10 = 0.${tenths}.`}; },
+  () => { const denom=pick([3,6,8]); const whole=randInt(30,120); const correct=(whole/denom);
+    const {options,correctIndex}=makeMCQ(correct,[correct+denom,correct-denom,whole/2]);
+    return {q:`What is 1/${denom} of ${whole}?`, options, correctIndex, explain:`${whole} ÷ ${denom} = ${correct}.`}; },
+  () => { const hundredths=randInt(1,99); const correct=`0.${hundredths.toString().padStart(2,"0")}`;
+    const wrongs=[`${hundredths}.0`,`0.${hundredths}0`,`1.${hundredths.toString().padStart(2,"0")}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Write ${hundredths}/100 as a decimal.`, options, correctIndex, explain:`${hundredths}/100 = ${correct}.`}; },
 ];
 
 // ---- MATH: Measurement, Time & Money ----
 G.math.measurement = [
+  () => { const h=randInt(1,12); const correct=`${h} o'clock`;
+    const wrongs=[`${h===12?1:h+1} o'clock`,`Half past ${h}`,`Quarter past ${h}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs);
+    return {q:`The clock shows ${h}:00. What time is this?`, options, correctIndex,
+      explain:`${h}:00 is "${correct}".`}; },
   () => { const h=randInt(1,12); const half=Math.random()<0.5;
     const correct = half ? `Half past ${h}` : `${h} o'clock`;
     const wrongs = [`Half past ${h===12?1:h+1}`,`${h===12?1:h+1} o'clock`,`Quarter past ${h}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
     return {q:`The clock shows ${h}:${half?"30":"00"}. What time is this?`, options, correctIndex,
       explain:`${h}:${half?"30":"00"} is "${correct}".`}; },
+  () => { const pounds=randInt(1,5), pence=pick([0,50]); const correct=`£${pounds}.${pence.toString().padStart(2,"0")}`;
+    const wrongs=[`£${pounds+1}.${pence.toString().padStart(2,"0")}`,`£${pounds}.${pence===0?"50":"00"}`,`£${pounds+1}.00`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`I have coins worth £${pounds}.${pence.toString().padStart(2,"0")} in total. How is that written?`,
+      options, correctIndex, explain:`Written as ${correct}.`}; },
   () => { const pounds=randInt(1,9), pence=pick([0,25,50,75]); const correct=`£${pounds}.${pence.toString().padStart(2,"0")}`;
     const wrongs=[`£${pounds+1}.${pence.toString().padStart(2,"0")}`,`£${pounds}.${(100-pence)===100?"00":(100-pence)}`,`£${pounds}.${pence===0?"50":"00"}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`I have coins worth £${pounds}.${pence.toString().padStart(2,"0")} in total. How is that written?`,
       options, correctIndex, explain:`Written as ${correct}.`}; },
+  () => { const h=randInt(13,20); const m=pick([0,30]); const period="pm";
+    const h12 = h%12===0?12:h%12; const correct=`${h12}:${m.toString().padStart(2,"0")} ${period}`;
+    const wrongs=[`${h12}:${m.toString().padStart(2,"0")} am`,`${h12===12?1:h12+1}:${m.toString().padStart(2,"0")} ${period}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Convert ${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")} (24-hour) to 12-hour time.`,
+      options, correctIndex, explain:`${h}:${m} in 24hr = ${correct}.`}; },
   () => { const h=randInt(1,23); const m=pick([0,15,30,45]); const period = h<12?"am":"pm";
     const h12 = h%12===0?12:h%12; const correct=`${h12}:${m.toString().padStart(2,"0")} ${period}`;
     const wrongs=[`${h12}:${m.toString().padStart(2,"0")} ${period==="am"?"pm":"am"}`,`${h12===12?1:h12+1}:${m.toString().padStart(2,"0")} ${period}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Convert ${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")} (24-hour) to 12-hour time.`,
       options, correctIndex, explain:`${h}:${m} in 24hr = ${correct}.`}; },
-  () => { const l=randInt(3,12), w=randInt(2,9); const correct=2*(l+w);
+  () => { const l=randInt(3,9), w=randInt(2,9); const correct=2*(l+w);
     const {options,correctIndex}=makeMCQ(correct,[l*w,correct+2,correct-2]);
     return {q:`A rectangle is ${l}cm by ${w}cm. What is its perimeter?`, options, correctIndex,
-      explain:`Perimeter = 2×(${l}+${w}) = ${correct}cm.`}; }
+      explain:`Perimeter = 2×(${l}+${w}) = ${correct}cm.`}; },
+  () => { const l=randInt(10,20), w=randInt(5,15); const correct=2*(l+w);
+    const {options,correctIndex}=makeMCQ(correct,[l*w,correct+2,correct-2]);
+    return {q:`A rectangle is ${l}cm by ${w}cm. What is its perimeter?`, options, correctIndex,
+      explain:`Perimeter = 2×(${l}+${w}) = ${correct}cm.`}; },
+  () => { const l=randInt(3,12), w=randInt(3,12); const correct=l*w;
+    const {options,correctIndex}=makeMCQ(correct,[2*(l+w),correct+l,correct-w]);
+    return {q:`A rectangle is ${l}cm by ${w}cm. What is its area?`, options, correctIndex,
+      explain:`Area = ${l} × ${w} = ${correct}cm².`}; },
 ];
 
 // ---- MATH: Geometry ----
 const SHAPES2D = [["triangle",3],["square",4],["pentagon",5],["hexagon",6],["rectangle",4],["octagon",8]];
+const SHAPES2D_BASIC = [["triangle",3],["square",4],["pentagon",5]];
+const SHAPES3D = [["cube",6],["cuboid",6],["sphere",0],["cylinder",2],["cone",1],["square pyramid",5]];
+const SHAPES3D_BASIC = [["cube",6],["sphere",0],["cylinder",2]];
 G.math.geometry = [
+  () => { const [name,sides]=pick(SHAPES2D_BASIC); const correct=sides;
+    const {options,correctIndex}=makeMCQ(correct,[sides-1,sides+1,sides+2]);
+    return {q:`How many sides does a ${name} have?`, options, correctIndex, explain:`A ${name} has ${sides} sides.`}; },
   () => { const [name,sides]=pick(SHAPES2D); const correct=sides;
     const {options,correctIndex}=makeMCQ(correct,[sides-1,sides+1,sides+2]);
     return {q:`How many sides does a ${name} have?`, options, correctIndex, explain:`A ${name} has ${sides} sides.`}; },
-  () => { const shapes=[["cube",6],["cuboid",6],["sphere",0],["cylinder",2],["cone",1],["square pyramid",5]];
-    const [name,faces]=pick(shapes); const correct=faces;
-    // Distractors are other real shapes' face counts (always >= 0) rather than
-    // arithmetic offsets, which could otherwise land on nonsense like "-1 faces".
-    const otherFaceCounts = shapes.filter(s=>s[0]!==name).map(s=>s[1]);
+  () => { const [name,faces]=pick(SHAPES3D_BASIC); const correct=faces;
+    const otherFaceCounts = SHAPES3D_BASIC.filter(s=>s[0]!==name).map(s=>s[1]);
     const {options,correctIndex}=makeMCQ(correct, otherFaceCounts);
     return {q:`How many faces does a ${name} have?`, options, correctIndex, explain:`A ${name} has ${faces} faces.`}; },
+  () => { const [name,faces]=pick(SHAPES3D); const correct=faces;
+    // Distractors are other real shapes' face counts (always >= 0) rather than
+    // arithmetic offsets, which could otherwise land on nonsense like "-1 faces".
+    const otherFaceCounts = SHAPES3D.filter(s=>s[0]!==name).map(s=>s[1]);
+    const {options,correctIndex}=makeMCQ(correct, otherFaceCounts);
+    return {q:`How many faces does a ${name} have?`, options, correctIndex, explain:`A ${name} has ${faces} faces.`}; },
+  () => { const angle=pick(["acute","right"]); const desc={acute:"less than 90°", right:"exactly 90°"};
+    const wrongOpts = Object.keys(desc).filter(k=>k!==angle);
+    const {options,correctIndex}=makeMCQ(desc[angle], wrongOpts.map(k=>desc[k]));
+    return {q:`What describes a ${angle} angle?`, options, correctIndex, explain:`A ${angle} angle is ${desc[angle]}.`}; },
   () => { const angle=pick(["acute","right","obtuse","reflex"]); const desc={
       acute:"less than 90°", right:"exactly 90°", obtuse:"between 90° and 180°", reflex:"more than 180°"};
     const wrongOpts = Object.keys(desc).filter(k=>k!==angle);
     const {options,correctIndex}=makeMCQ(desc[angle], wrongOpts.map(k=>desc[k]));
     return {q:`What describes a ${angle} angle?`, options, correctIndex, explain:`A ${angle} angle is ${desc[angle]}.`}; },
+  () => { const x=randInt(1,4), y=randInt(1,4); const correct=`(${x}, ${y})`;
+    const wrongs=[`(${y}, ${x})`,`(${x+1}, ${y})`,`(${x}, ${y+1})`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(v)=>String(v));
+    return {q:`A point is ${x} across and ${y} up from the origin. What are its coordinates?`,
+      options, correctIndex, explain:`Coordinates are written (across, up) = ${correct}.`}; },
   () => { const x=randInt(1,6), y=randInt(1,6); const correct=`(${x}, ${y})`;
     const wrongs=[`(${y}, ${x})`,`(${x+1}, ${y})`,`(${x}, ${y+1})`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(v)=>String(v));
     return {q:`A point is ${x} across and ${y} up from the origin. What are its coordinates?`,
-      options, correctIndex, explain:`Coordinates are written (across, up) = ${correct}.`}; }
+      options, correctIndex, explain:`Coordinates are written (across, up) = ${correct}.`}; },
+  () => { const riddles=[
+      ["A shape has 4 equal sides and 4 right angles. What shape is it?","Square",["Rectangle","Triangle","Pentagon"],"A square has 4 equal sides and 4 right angles — a rectangle has 4 right angles but not always equal sides."],
+      ["A shape has 4 right angles but its sides aren't all equal. What shape is it?","Rectangle",["Square","Triangle","Hexagon"],"A rectangle has 4 right angles like a square, but only opposite sides match — a square's sides are ALL equal."],
+      ["A shape has 3 sides and 3 angles. What shape is it?","Triangle",["Square","Pentagon","Hexagon"],"A triangle is the only shape with exactly 3 sides and 3 angles."],
+      ["A shape has 0 straight sides and no corners at all. What shape is it?","Circle",["Square","Triangle","Octagon"],"A circle is perfectly round with no straight sides or corners."],
+    ];
+    const [q,correct,wrongs,explain]=pick(riddles);
+    const {options,correctIndex}=makeMCQ(correct,wrongs);
+    return {q, options, correctIndex, explain}; },
 ];
 
 // ---- MATH: Statistics ----
 G.math.statistics = [
+  () => { const vals = shuffle([2,3,4,5,6]).slice(0,3);
+    const max=Math.max(...vals); const labels=["Item 1","Item 2","Item 3"];
+    const correctLabel = labels[vals.indexOf(max)]; const shuffled = shuffle(labels);
+    return {q:`A pictogram shows: Item 1 = ${vals[0]} symbols, Item 2 = ${vals[1]} symbols, Item 3 = ${vals[2]} symbols. Which item has the most?`,
+      options: shuffled, correctIndex: shuffled.indexOf(correctLabel),
+      explain:`${correctLabel} has the most, with ${max} symbols.`}; },
   () => { // pictogram: 4 DISTINCT values so there's always exactly one right answer (no ties)
     const vals = shuffle([2,3,4,5,6,7,8,9,10,11]).slice(0,4); // drawn without replacement -> distinct
     const max=Math.max(...vals);
@@ -440,67 +569,139 @@ G.math.statistics = [
     return {q:`A pictogram shows: Item 1 = ${vals[0]} symbols, Item 2 = ${vals[1]} symbols, Item 3 = ${vals[2]} symbols, Item 4 = ${vals[3]} symbols. Which item has the most?`,
       options: shuffled, correctIndex: shuffled.indexOf(correctLabel),
       explain:`${correctLabel} has the most, with ${max} symbols.`}; },
+  () => { const vals=[randInt(3,8),randInt(3,8),randInt(3,8)];
+    const total=vals.reduce((a,b)=>a+b,0);
+    const {options,correctIndex}=makeMCQ(total,[total-2,total+2,total-1]);
+    return {q:`A bar chart shows 3 bars with values ${vals.join(", ")}. What is the total?`, options, correctIndex,
+      explain:`${vals.join(" + ")} = ${total}.`}; },
   () => { const vals=[randInt(3,10),randInt(3,10),randInt(3,10),randInt(3,10)];
     const total=vals.reduce((a,b)=>a+b,0);
     const {options,correctIndex}=makeMCQ(total,[total-2,total+2,total-1]);
     return {q:`A bar chart shows 4 bars with values ${vals.join(", ")}. What is the total?`, options, correctIndex,
       explain:`${vals.join(" + ")} = ${total}.`}; },
+  () => { const sets=[[2,2,3,4],[5,6,6,7],[1,1,2,3],[8,9,9,10]];
+    const vals=pick(sets); const correct=vals[0]===vals[1]?vals[0]:vals[1];
+    const others=[...new Set(vals)].filter(v=>v!==correct);
+    const {options,correctIndex}=makeMCQ(correct,others);
+    return {q:`In the data set ${vals.join(", ")}, which number appears most often (the mode)?`, options, correctIndex,
+      explain:`${correct} appears most often, so the mode is ${correct}.`}; },
   () => { const vals=[2,3,3,4,5,3]; const correct=3;
     const {options,correctIndex}=makeMCQ(correct,[2,4,5]);
     return {q:`In the data set ${vals.join(", ")}, which number appears most often (the mode)?`, options, correctIndex,
       explain:`3 appears most often, so the mode is 3.`}; },
+  () => { const vals=[randInt(1,5),randInt(6,10)]; const range=Math.max(...vals)-Math.min(...vals);
+    const {options,correctIndex}=makeMCQ(range,[range+1,range-1,Math.max(...vals)]);
+    return {q:`A data set has values ${vals.join(", ")}. What is the range (highest minus lowest)?`, options, correctIndex,
+      explain:`${Math.max(...vals)} - ${Math.min(...vals)} = ${range}.`}; },
   () => { const vals=[randInt(1,5),randInt(6,10),randInt(11,15)]; const range=Math.max(...vals)-Math.min(...vals);
     const {options,correctIndex}=makeMCQ(range,[range+1,range-1,Math.max(...vals)]);
     return {q:`A data set has values ${vals.join(", ")}. What is the range (highest minus lowest)?`, options, correctIndex,
-      explain:`${Math.max(...vals)} - ${Math.min(...vals)} = ${range}.`}; }
+      explain:`${Math.max(...vals)} - ${Math.min(...vals)} = ${range}.`}; },
+  () => { const mid=randInt(3,10); const vals=[mid-2,mid,mid+2]; const total=vals.reduce((a,b)=>a+b,0); const correct=total/3;
+    const {options,correctIndex}=makeMCQ(correct,[correct+1,correct-1,total]);
+    return {q:`What is the mean (average) of ${vals.join(", ")}?`, options, correctIndex,
+      explain:`(${vals.join(" + ")}) ÷ 3 = ${correct}.`}; },
 ];
 
 // ---- MATH: Reasoning / word problems ----
 G.math.reasoning = [
+  () => { const price=randInt(2,5); const qty=randInt(2,4); const correct=price*qty;
+    const {options,correctIndex}=makeMCQ(correct,[correct+price,correct-price,price+qty]);
+    return {q:`Toy cars cost £${price} each. How much for ${qty} toy cars?`, options, correctIndex,
+      explain:`${qty} × £${price} = £${correct}.`}; },
   () => { const price=randInt(2,9); const qty=randInt(2,6); const correct=price*qty;
     const {options,correctIndex}=makeMCQ(correct,[correct+price,correct-price,price+qty]);
     return {q:`Toy cars cost £${price} each. How much for ${qty} toy cars?`, options, correctIndex,
       explain:`${qty} × £${price} = £${correct}.`}; },
+  () => { const start=randInt(20,40); const spent=randInt(5,15); const correct=start-spent;
+    const {options,correctIndex}=makeMCQ(correct,[correct+5,correct-5,start]);
+    return {q:`You have £${start}. You spend £${spent} on a model kit. How much is left?`, options, correctIndex,
+      explain:`£${start} - £${spent} = £${correct}.`}; },
   () => { const start=randInt(20,60); const spent=randInt(5,start-5); const correct=start-spent;
     const {options,correctIndex}=makeMCQ(correct,[correct+5,correct-5,start]);
     return {q:`You have £${start}. You spend £${spent} on a model kit. How much is left?`, options, correctIndex,
       explain:`£${start} - £${spent} = £${correct}.`}; },
+  () => { const rows=randInt(3,6), cols=randInt(3,6); const correct=rows*cols;
+    const {options,correctIndex}=makeMCQ(correct,[correct+rows,correct-cols,rows+cols]);
+    return {q:`Lego bricks are arranged in ${rows} rows of ${cols}. How many bricks in total?`, options, correctIndex,
+      explain:`${rows} × ${cols} = ${correct}.`}; },
   () => { const rows=randInt(3,9), cols=randInt(3,9); const correct=rows*cols;
     const {options,correctIndex}=makeMCQ(correct,[correct+rows,correct-cols,rows+cols]);
     return {q:`Lego bricks are arranged in ${rows} rows of ${cols}. How many bricks in total?`, options, correctIndex,
       explain:`${rows} × ${cols} = ${correct}.`}; },
+  () => { const a=randInt(10,25), b=randInt(5,15), c=randInt(3,10); const correct=a+b-c;
+    const {options,correctIndex}=makeMCQ(correct,[a+b+c,correct+2,correct-2]);
+    return {q:`A car park has ${a} cars. ${b} more arrive, then ${c} leave. How many cars now?`, options, correctIndex,
+      explain:`${a} + ${b} - ${c} = ${correct}.`}; },
   () => { const a=randInt(15,40), b=randInt(10,30), c=randInt(5,20); const correct=a+b-c;
     const {options,correctIndex}=makeMCQ(correct,[a+b+c,correct+2,correct-2]);
     return {q:`A car park has ${a} cars. ${b} more arrive, then ${c} leave. How many cars now?`, options, correctIndex,
-      explain:`${a} + ${b} - ${c} = ${correct}.`}; }
+      explain:`${a} + ${b} - ${c} = ${correct}.`}; },
+  () => { const packs=randInt(3,6), perPack=randInt(4,8), extra=randInt(2,10); const correct=packs*perPack+extra;
+    const {options,correctIndex}=makeMCQ(correct,[packs*perPack,correct+extra,correct-perPack]);
+    return {q:`Grayson buys ${packs} packs of ${perPack} building blocks, then gets ${extra} more as a gift. How many blocks does he have in total?`,
+      options, correctIndex, explain:`(${packs} × ${perPack}) + ${extra} = ${packs*perPack} + ${extra} = ${correct}.`}; },
 ];
 
 // ---- ENGLISH: Word Classes ----
+// 9 tiers: each pair of grammar concepts gets a Year, escalating from Noun/Verb
+// through to a full mixed-class challenge at Year 4 Advanced.
 G.english.word_classes = [
+  () => { const nouns=["car","dog","cat","ball"]; const verbs=["run","jump","play","eat"];
+    const isNoun=Math.random()<0.5; const word=isNoun?pick(nouns):pick(verbs);
+    const correct=isNoun?"Noun":"Verb";
+    const {options,correctIndex}=makeMCQ(correct,["Noun","Verb"]);
+    return {q:`${introSentence("Noun","Verb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const nouns=["car","dog","engine","castle","planet"]; const verbs=["run","build","jump","design","explore"];
     const isNoun=Math.random()<0.5; const word=isNoun?pick(nouns):pick(verbs);
     const correct=isNoun?"Noun":"Verb";
     const {options,correctIndex}=makeMCQ(correct,["Noun","Verb","Adjective"]);
     return {q:`${introSentence("Noun","Verb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
+  () => { const adjs=["shiny","tall","happy","fast"]; const nouns=["car","dog","castle","rocket"];
+    const isAdj=Math.random()<0.5; const word=isAdj?pick(adjs):pick(nouns);
+    const correct=isAdj?"Adjective":"Noun";
+    const {options,correctIndex}=makeMCQ(correct,["Adjective","Noun"]);
+    return {q:`${introSentence("Adjective","Noun")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is ${correct==="Adjective"?"an":"a"} ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const adjs=["shiny","enormous","curious","rusty"]; const advs=["quickly","carefully","loudly","bravely"];
     const isAdj=Math.random()<0.5; const word=isAdj?pick(adjs):pick(advs);
     const correct=isAdj?"Adjective":"Adverb";
     const {options,correctIndex}=makeMCQ(correct,["Adjective","Adverb","Noun"]);
     return {q:`${introSentence("Adjective","Adverb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is an ${correct.toLowerCase()}${withDef(correct)}.`}; },
+  () => { const pronouns=["he","she","it","they"]; const nouns=["car","dog","castle","rocket"];
+    const isPro=Math.random()<0.5; const word=isPro?pick(pronouns):pick(nouns);
+    const correct=isPro?"Pronoun":"Noun";
+    const {options,correctIndex}=makeMCQ(correct,["Pronoun","Noun"]);
+    return {q:`${introSentence("Pronoun","Noun")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const pronouns=["he","she","it","they","we"]; const conjunctions=["and","but","because","although"];
     const isPro=Math.random()<0.5; const word=isPro?pick(pronouns):pick(conjunctions);
     const correct=isPro?"Pronoun":"Conjunction";
     const {options,correctIndex}=makeMCQ(correct,["Pronoun","Conjunction","Preposition"]);
     return {q:`${introSentence("Pronoun","Conjunction")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
+  () => { const preps=["under","beside","through","between"]; const verbs=["run","jump","build","explore"];
+    const isPrep=Math.random()<0.5; const word=isPrep?pick(preps):pick(verbs);
+    const correct=isPrep?"Preposition":"Verb";
+    const {options,correctIndex}=makeMCQ(correct,["Preposition","Verb"]);
+    return {q:`${introSentence("Preposition","Verb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const preps=["under","beside","through","between"]; const properNouns=["London","Grayson","Tuesday","Mars"];
     const isPrep=Math.random()<0.5; const word=isPrep?pick(preps):pick(properNouns);
     const correct=isPrep?"Preposition":"Proper noun";
     const {options,correctIndex}=makeMCQ(correct,["Preposition","Proper noun","Common noun"]);
-    return {q:`${introSentence("Preposition","Proper noun")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; }
+    return {q:`${introSentence("Preposition","Proper noun")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
+  () => { const pool=[["car","Noun"],["run","Verb"],["shiny","Adjective"],["quickly","Adverb"],["he","Pronoun"],["but","Conjunction"],["under","Preposition"],["London","Proper noun"]];
+    const [word,correct]=pick(pool);
+    const wrongClasses = shuffle(pool.filter(p=>p[1]!==correct).map(p=>p[1])).slice(0,3);
+    const {options,correctIndex}=makeMCQ(correct,wrongClasses);
+    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
 ];
 
 // ---- ENGLISH: Sentence Structure ----
 G.english.sentence_structure = [
+  () => { const complete=["The dog barked.","Grayson ran fast.","The car stopped.","Emma laughed."]; const fragment=["Running fast","Under the table","Near the door","Down the hill"];
+    const isComplete=Math.random()<0.5; const text=isComplete?pick(complete):pick(fragment);
+    const correct=isComplete?"Complete sentence":"Sentence fragment";
+    const {options,correctIndex}=makeMCQ(correct,["Complete sentence","Sentence fragment"]);
+    return {q:`${introSentence("Complete sentence","Sentence fragment")}Is this a complete sentence or a fragment? "${text}"`, options, correctIndex,
+      explain:`"${text}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const complete=["The dog barked loudly.","Grayson built a tower.","The car raced down the hill.","Scientists study the stars."];
     const fragment=["Running down the street","Because it was raining","Under the old bridge","Building a rocket ship"];
     const isComplete=Math.random()<0.5; const text=isComplete?pick(complete):pick(fragment);
@@ -508,6 +709,12 @@ G.english.sentence_structure = [
     const {options,correctIndex}=makeMCQ(correct,["Complete sentence","Sentence fragment"]);
     return {q:`${introSentence("Complete sentence","Sentence fragment")}Is this a complete sentence or a fragment? "${text}"`, options, correctIndex,
       explain:`"${text}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
+  () => { const simple=["The car stopped.","She likes science."]; const compound=["The car stopped, and the driver got out.","She likes science, but she loves art more."];
+    const isSimple=Math.random()<0.5; const text=isSimple?pick(simple):pick(compound);
+    const correct=isSimple?"Simple sentence":"Compound sentence";
+    const {options,correctIndex}=makeMCQ(correct,["Simple sentence","Compound sentence"]);
+    return {q:`${introSentence("Simple sentence","Compound sentence")}Is this a simple or compound sentence? "${text}"`, options, correctIndex,
+      explain:`It's a ${correct.toLowerCase()}${withDef(correct)} — ${isSimple?"one idea":"two ideas joined by a conjunction"}.`}; },
   () => { const simple=["The car stopped.","She likes science.","Grayson built a tower.","The engine roared."];
     const compound=["The car stopped, and the driver got out.","She likes science, but she loves art more.","Grayson built a tower, and it didn't fall.","The engine roared, but the car stayed still."];
     const isSimple=Math.random()<0.5; const text=isSimple?pick(simple):pick(compound);
@@ -515,6 +722,11 @@ G.english.sentence_structure = [
     const {options,correctIndex}=makeMCQ(correct,["Simple sentence","Compound sentence"]);
     return {q:`${introSentence("Simple sentence","Compound sentence")}Is this a simple or compound sentence? "${text}"`, options, correctIndex,
       explain:`It's a ${correct.toLowerCase()}${withDef(correct)} — ${isSimple?"one idea":"two ideas joined by a conjunction"}.`}; },
+  () => { const sentences=["When the bell rang, everyone stopped.","Because he was curious, Grayson opened the box.","While the rocket launched, the crowd cheered.","Although it was raining, we went outside."];
+    const text=pick(sentences); const correct="Subordinate clause";
+    const {options,correctIndex}=makeMCQ(correct,["Subordinate clause","Main clause"]);
+    return {q:`${introSentence("Subordinate clause")}In "${text}", what type of clause comes first?`, options, correctIndex,
+      explain:`It starts with a subordinate clause${withDef(correct)}.`}; },
   () => { const sentences=["Although it was raining, we went outside.","When the bell rang, everyone stopped.","Because he was curious, Grayson opened the box.","While the rocket launched, the crowd cheered."];
     const text=pick(sentences); const correct="Subordinate clause";
     const {options,correctIndex}=makeMCQ(correct,["Subordinate clause","Main clause","Compound sentence"]);
@@ -526,11 +738,30 @@ G.english.sentence_structure = [
     const wrongs=[`${a} ${b}`,`${a.slice(0,-1)} but ${b.toLowerCase()}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`${introSentence("Compound sentence")}Which correctly joins these into one compound sentence? "${a}" + "${b}"`, options, correctIndex,
-      explain:`Join with a comma and "and": "${correct}"`}; }
+      explain:`Join with a comma and "and": "${correct}"`}; },
+  () => { const pairs=[["The rocket launched.","Everyone cheered."],["The dog barked.","The cat ran away."],["Grayson finished the model.","He showed his dad."],["The rain stopped.","We went outside to play."]];
+    const [a,b]=pick(pairs);
+    const correct=`${a.slice(0,-1)}, and ${b.toLowerCase()}`;
+    const wrongs=[`${a} ${b}`,`${a.slice(0,-1)} but ${b.toLowerCase()}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`${introSentence("Compound sentence")}Which correctly joins these into one compound sentence? "${a}" + "${b}"`, options, correctIndex,
+      explain:`Join with a comma and "and": "${correct}"`}; },
+  () => { const pairs=[["Because it was raining","we stayed inside."],["Although he was tired","Grayson kept building."],["When the alarm rang","everyone rushed outside."]];
+    const [sub,main]=pick(pairs); const correct=sub;
+    const wrongs=[main.replace(/\.$/,""), `${sub} ${main}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`In "${sub}, ${main}", which part is the subordinate clause?`, options, correctIndex,
+      explain:`"${sub}" is the subordinate clause${withDef("Subordinate clause")} — it can't stand alone as a full sentence.`}; },
 ];
 
 // ---- ENGLISH: Punctuation ----
 G.english.punctuation = [
+  () => { const pairs=[["the dog ran","The dog ran."],["grayson jumped","Grayson jumped."],["the cat slept","The cat slept."],["emma smiled","Emma smiled."]];
+    const [text,correct]=pick(pairs);
+    const wrongs=[text+".", correct.slice(0,-1)];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which is correctly punctuated? (original: "${text}")`, options, correctIndex,
+      explain:`Sentences start with a capital letter and end with a full stop: "${correct}"`}; },
   () => { const pairs=[["the dog ran fast","The dog ran fast."],["grayson built a rocket","Grayson built a rocket."],["the car stopped suddenly","The car stopped suddenly."],["she loves science","She loves science."]];
     const [text,correct]=pick(pairs);
     const wrongs=[text+".", correct.slice(0,-1), text.charAt(0).toUpperCase()+text.slice(1)];
@@ -540,10 +771,21 @@ G.english.punctuation = [
   () => { const lists=[["apples","pears","bananas"],["cars","trucks","trains"],["red","blue","green"],["rockets","planets","stars"]];
     const items=pick(lists);
     const correct=`I bought ${items[0]}, ${items[1]} and ${items[2]}.`;
+    const wrongs=[`I bought ${items[0]} ${items[1]} and ${items[2]}.`,`I bought ${items[0]} ${items[1]}, and ${items[2]}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which sentence uses commas correctly in a list?`, options, correctIndex,
+      explain:`Commas separate list items: "${correct}"`}; },
+  () => { const lists=[["apples","pears","bananas"],["cars","trucks","trains"],["red","blue","green"],["rockets","planets","stars"]];
+    const items=pick(lists);
+    const correct=`I bought ${items[0]}, ${items[1]} and ${items[2]}.`;
     const wrongs=[`I bought ${items[0]} ${items[1]} and ${items[2]}.`,`I bought ${items[0]}, ${items[1]}, and, ${items[2]}.`,`I bought ${items[0]} ${items[1]}, and ${items[2]}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which sentence uses commas correctly in a list?`, options, correctIndex,
       explain:`Commas separate list items: "${correct}"`}; },
+  () => { const names=["Grayson","Emma","Oliver","Mia"]; const name=pick(names);
+    const correct=`${name}'s car`; const wrongs=[`${name}s' car`,`${name}s car`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which correctly shows the car belongs to ${name}?`, options, correctIndex, explain:`Correct form: "${correct}".`}; },
   () => { const names=["Grayson","Emma","the dog"]; const name=pick(names);
     const isPossessive=Math.random()<0.5;
     const correct = isPossessive ? `${name}'s car` : "don't";
@@ -554,44 +796,93 @@ G.english.punctuation = [
   () => { const lines=[["I found it!","Grayson"],["Look at that!","Emma"],["We won!","the team"],["It's alive!","the scientist"]];
     const [line,speaker]=pick(lines);
     const correct=`"${line}" said ${speaker}.`;
+    const wrongs=[`${line} said ${speaker}.`,`"${line} said ${speaker}."`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which correctly punctuates the direct speech?`, options, correctIndex,
+      explain:`Speech marks wrap exactly what's said, punctuation goes inside: ${correct}`}; },
+  () => { const lines=[["I found it!","Grayson"],["Look at that!","Emma"],["We won!","the team"],["It's alive!","the scientist"]];
+    const [line,speaker]=pick(lines);
+    const correct=`"${line}" said ${speaker}.`;
     const wrongs=[`${line} said ${speaker}.`,`"${line} said ${speaker}."`,`"${line.slice(0,-1)}"! said ${speaker}.`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which correctly punctuates the direct speech?`, options, correctIndex,
-      explain:`Speech marks wrap exactly what's said, punctuation goes inside: ${correct}`}; }
+      explain:`Speech marks wrap exactly what's said, punctuation goes inside: ${correct}`}; },
+  () => { const pairs=[["Why did the rocket launch","Why did the rocket launch?"],["What is your name","What is your name?"],["Where do you live","Where do you live?"]];
+    const [text,correct]=pick(pairs);
+    const wrongs=[text+".", text+"!"];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which is correctly punctuated? (original: "${text}")`, options, correctIndex,
+      explain:`Questions end with a question mark: "${correct}"`}; },
 ];
 
 // ---- ENGLISH: Verb Tenses ----
 G.english.tenses = [
+  () => { const pairs=[["walk","walked"],["jump","jumped"],["play","played"],["look","looked"]];
+    const [present,past]=pick(pairs); const correct=past;
+    const {options,correctIndex}=makeMCQ(correct,[present, edForm(present)]);
+    return {q:`${introSentence("Past tense")}What is the past tense of "${present}"?`, options, correctIndex,
+      explain:`"${present}" → "${correct}" (past tense = something that already happened).`}; },
   () => { const pairs=[["walk","walked"],["jump","jumped"],["build","built"],["run","ran"],["go","went"],["paint","painted"],["explore","explored"]];
     const [present,past]=pick(pairs); const correct=past;
     const {options,correctIndex}=makeMCQ(correct,[present, edForm(present), past+"ed"]);
     return {q:`${introSentence("Past tense")}What is the past tense of "${present}"?`, options, correctIndex,
       explain:`"${present}" → "${correct}" (past tense = something that already happened).`}; },
+  () => { const verbs=["build","paint","jump","race"]; const v=pick(verbs); const correct=ingForm(v);
+    const {options,correctIndex}=makeMCQ(correct,[v, edForm(v)]);
+    return {q:`${introSentence("Progressive tense")}Which shows the action happening right now for "${v}"? "Grayson is ___ a tower."`,
+      options, correctIndex, explain:`Progressive tense uses "is/are + verb-ing": "${correct}"${withDef("Progressive tense")}.`}; },
   () => { const verbs=["build","design","paint","explore","race"]; const v=pick(verbs); const correct=ingForm(v);
     const {options,correctIndex}=makeMCQ(correct,[v, edForm(v), v+"s"]);
     return {q:`${introSentence("Progressive tense")}Which shows the action happening right now for "${v}"? "Grayson is ___ a tower."`,
       options, correctIndex, explain:`Progressive tense uses "is/are + verb-ing": "${correct}"${withDef("Progressive tense")}.`}; },
+  () => { const verbs=["build","paint","explore","launch"]; const v=pick(verbs); const correct=`will ${v}`;
+    const {options,correctIndex}=makeMCQ(correct,[edForm(v),v]);
+    return {q:`${introSentence("Future tense")}Which shows the future tense for "${v}"? "Tomorrow, Grayson ___ a rocket."`, options, correctIndex,
+      explain:`Future tense: "will + verb": "${correct}"${withDef("Future tense")}.`}; },
   () => { const verbs=["explore","build","paint","launch","design"]; const v=pick(verbs); const correct=`will ${v}`;
     const {options,correctIndex}=makeMCQ(correct,[edForm(v),`is ${ingForm(v)}`,v]);
     return {q:`${introSentence("Future tense")}Which shows the future tense for "${v}"? "Tomorrow, Grayson ___ a rocket."`, options, correctIndex,
       explain:`Future tense: "will + verb": "${correct}"${withDef("Future tense")}.`}; },
+  () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"]]; const [present,past]=pick(pairs);
+    const correct=`has ${past}`;
+    const {options,correctIndex}=makeMCQ(correct,[`have ${present}`,past]);
+    return {q:`${introSentence("Present perfect tense")}Which shows the present perfect tense? "Grayson ___ the whole model."`, options, correctIndex,
+      explain:`Present perfect: "has/have + past participle": "${correct}"${withDef("Present perfect tense")}.`}; },
   () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"],["explore","explored"]]; const [present,past]=pick(pairs);
     const correct=`has ${past}`;
     const {options,correctIndex}=makeMCQ(correct,[`have ${present}`,`is ${ingForm(present)}`,past]);
     return {q:`${introSentence("Present perfect tense")}Which shows the present perfect tense? "Grayson ___ the whole model."`, options, correctIndex,
-      explain:`Present perfect: "has/have + past participle": "${correct}"${withDef("Present perfect tense")}.`}; }
+      explain:`Present perfect: "has/have + past participle": "${correct}"${withDef("Present perfect tense")}.`}; },
+  () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"]]; const [present,past]=pick(pairs);
+    const correct=`had ${past}`;
+    const {options,correctIndex}=makeMCQ(correct,[`has ${past}`,`is ${ingForm(present)}`,past]);
+    return {q:`${introSentence("Past perfect tense")}Which shows the past perfect tense? "By the time we arrived, Grayson ___ the whole model."`, options, correctIndex,
+      explain:`Past perfect: "had + past participle" (used for something that happened before another past event): "${correct}"${withDef("Past perfect tense")}.`}; },
 ];
 
 // ---- ENGLISH: Vocabulary & Spelling ----
 G.english.vocabulary = [
+  () => { const pairs=[["happy","joyful"],["big","enormous"],["cold","icy"],["little","tiny"]];
+    const [word,syn]=pick(pairs); const correct=syn;
+    const {options,correctIndex}=makeMCQ(correct,["sad","small","hot"]);
+    return {q:`Which word means the same as "${word}"?`, options, correctIndex, explain:`"${syn}" is a synonym for "${word}".`}; },
   () => { const pairs=[["happy","joyful"],["big","enormous"],["fast","quick"],["smart","clever"]];
     const [word,syn]=pick(pairs); const correct=syn;
     const {options,correctIndex}=makeMCQ(correct,["sad","small","slow"]);
     return {q:`Which word means the same as "${word}"?`, options, correctIndex, explain:`"${syn}" is a synonym for "${word}".`}; },
+  () => { const pairs=[["hot","cold"],["fast","slow"],["up","down"],["day","night"]];
+    const [word,ant]=pick(pairs); const correct=ant;
+    const {options,correctIndex}=makeMCQ(correct,["huge","quick","warm"]);
+    return {q:`Which word means the opposite of "${word}"?`, options, correctIndex, explain:`"${ant}" is an antonym for "${word}".`}; },
   () => { const pairs=[["hot","cold"],["fast","slow"],["big","small"],["happy","sad"]];
     const [word,ant]=pick(pairs); const correct=ant;
     const {options,correctIndex}=makeMCQ(correct,["huge","quick","joyful"]);
     return {q:`Which word means the opposite of "${word}"?`, options, correctIndex, explain:`"${ant}" is an antonym for "${word}".`}; },
+  () => { const roots=[["un","happy","not happy"],["un","kind","not kind"],["un","fair","not fair"],["un","well","not well"]];
+    const [prefix,root,meaning]=pick(roots); const correct=`${prefix}${root}`;
+    const {options,correctIndex}=makeMCQ(correct,[root, `${root}ing`]);
+    return {q:`Add a prefix to "${root}" to mean "${meaning}".`, options, correctIndex,
+      explain:`"${prefix}" + "${root}" = "${correct}" (${meaning}).`}; },
   () => { const roots=[["un","happy","not happy"],["re","build","build again"],["dis","like","not like"]];
     const otherPrefixes=["un","re","dis"];
     const [prefix,root,meaning]=pick(roots); const correct=`${prefix}${root}`;
@@ -599,20 +890,41 @@ G.english.vocabulary = [
     const {options,correctIndex}=makeMCQ(correct,[...wrongPrefixes, root]);
     return {q:`Add a prefix to "${root}" to mean "${meaning}".`, options, correctIndex,
       explain:`"${prefix}" + "${root}" = "${correct}" (${meaning}).`}; },
+  () => { const pairs=[["to","too"],["hear","here"],["one","won"],["sun","son"]];
+    const [a,b]=pick(pairs); const useA=Math.random()<0.5; const word=useA?a:b;
+    const {options,correctIndex}=makeMCQ(`${a} / ${b}`,[`${a} / ${a}`]);
+    return {q:`"${word}" has a homophone (sounds the same, different spelling & meaning). Which pair is correct?`,
+      options, correctIndex, explain:`"${a}" and "${b}" are homophones.`}; },
   () => { const pairs=[["their","there"],["to","too"],["hear","here"],["write","right"]];
     const [a,b]=pick(pairs); const useA=Math.random()<0.5; const word=useA?a:b;
     const {options,correctIndex}=makeMCQ(`${a} / ${b}`,[`${a} / ${a}`,`${b} / ${b}`]);
     return {q:`"${word}" has a homophone (sounds the same, different spelling & meaning). Which pair is correct?`,
-      options, correctIndex, explain:`"${a}" and "${b}" are homophones.`}; }
+      options, correctIndex, explain:`"${a}" and "${b}" are homophones.`}; },
+  () => { const roots=[["care","ful","full of care"],["care","less","without care"],["help","ful","full of help"],["help","less","without help"]];
+    const [root,suffix,meaning]=pick(roots); const correct=`${root}${suffix}`;
+    const wrongSuffix = suffix==="ful"?"less":"ful";
+    const {options,correctIndex}=makeMCQ(correct,[`${root}${wrongSuffix}`, root]);
+    return {q:`Add a suffix to "${root}" to mean "${meaning}".`, options, correctIndex,
+      explain:`"${root}" + "${suffix}" = "${correct}" (${meaning}).`}; },
 ];
 
 // ---- ENGLISH: Composition & Style ----
 G.english.composition = [
   () => { const plain=["big","good","said","nice"]; const better={big:"enormous",good:"magnificent",said:"exclaimed",nice:"delightful"};
     const word=pick(plain); const correct=better[word];
+    const {options,correctIndex}=makeMCQ(correct,["ok","fine"]);
+    return {q:`Which is the more powerful, descriptive word to replace "${word}"?`, options, correctIndex,
+      explain:`"${correct}" is more vivid and precise than "${word}".`}; },
+  () => { const plain=["big","good","said","nice"]; const better={big:"enormous",good:"magnificent",said:"exclaimed",nice:"delightful"};
+    const word=pick(plain); const correct=better[word];
     const {options,correctIndex}=makeMCQ(correct,["ok","fine","stuff"]);
     return {q:`Which is the more powerful, descriptive word to replace "${word}"?`, options, correctIndex,
       explain:`"${correct}" is more vivid and precise than "${word}".`}; },
+  () => { const pairs=[["Suddenly, the engine roared to life.","The car started."],["Deep in the workshop, gears began to turn.","There was a car in the workshop."],["With a deafening blast, the rocket tore into the sky.","The rocket went up."],["Under a sky full of stars, the scientists waited.","It was nighttime and the scientists waited."]];
+    const [correct,weak]=pick(pairs);
+    const {options,correctIndex}=makeMCQ(correct,[weak]);
+    return {q:`Which is the more engaging sentence opener?`, options, correctIndex,
+      explain:`"${correct}" hooks the reader with vivid detail or action.`}; },
   () => { const pairs=[["Suddenly, the engine roared to life.","The car started."],["Deep in the workshop, gears began to turn.","There was a car in the workshop."],["With a deafening blast, the rocket tore into the sky.","The rocket went up."],["Under a sky full of stars, the scientists waited.","It was nighttime and the scientists waited."]];
     const [correct,weak]=pick(pairs);
     const otherWeak=pick(["The car started.","There was a car in the workshop.","The rocket went up.","It was nighttime and the scientists waited."].filter(w=>w!==weak));
@@ -622,16 +934,37 @@ G.english.composition = [
   () => { const pairs=[["The rain poured down.","We stayed inside and read books."],["Grayson studied hard.","He passed the test."],["The engine overheated.","The car stopped."],["The alarm went off.","Everyone left the building."]];
     const [a,b]=pick(pairs);
     const correct=`Because ${a.slice(0,-1).toLowerCase()}, ${b.toLowerCase()}`;
+    const wrongs=[`${a} ${b}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which best combines these two ideas showing cause and effect? "${a}" + "${b}"`, options, correctIndex,
+      explain:`"${correct}" clearly links cause and effect with "Because".`}; },
+  () => { const pairs=[["The rain poured down.","We stayed inside and read books."],["Grayson studied hard.","He passed the test."],["The engine overheated.","The car stopped."],["The alarm went off.","Everyone left the building."]];
+    const [a,b]=pick(pairs);
+    const correct=`Because ${a.slice(0,-1).toLowerCase()}, ${b.toLowerCase()}`;
     const wrongs=[`${a} ${b}`,`${b} ${a}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which best combines these two ideas showing cause and effect? "${a}" + "${b}"`, options, correctIndex,
       explain:`"${correct}" clearly links cause and effect with "Because".`}; },
   () => { const pairs=[["car","the rusty, roaring vintage car"],["dog","the small, fluffy brown dog"],["rocket","the shiny, silver rocket"],["castle","the tall, ancient stone castle"]];
     const [plainNoun,expanded]=pick(pairs);
+    const {options,correctIndex}=makeMCQ(expanded,[`the ${plainNoun}`]);
+    return {q:`Which is the best expanded noun phrase for "${plainNoun}"?`, options, correctIndex,
+      explain:`"${expanded}" adds vivid, specific detail.`}; },
+  () => { const pairs=[["car","the rusty, roaring vintage car"],["dog","the small, fluffy brown dog"],["rocket","the shiny, silver rocket"],["castle","the tall, ancient stone castle"]];
+    const [plainNoun,expanded]=pick(pairs);
     const otherExpanded=pick(["the rusty, roaring vintage car","the small, fluffy brown dog","the shiny, silver rocket","the tall, ancient stone castle"].filter(e=>e!==expanded));
     const {options,correctIndex}=makeMCQ(expanded,[`the ${plainNoun}`,`a ${plainNoun} that is a ${plainNoun}`,otherExpanded]);
     return {q:`Which is the best expanded noun phrase for "${plainNoun}"?`, options, correctIndex,
-      explain:`"${expanded}" adds vivid, specific detail.`}; }
+      explain:`"${expanded}" adds vivid, specific detail.`}; },
+  () => { const sets=[
+      ["The car was fast.","The car was red.","It won the race.", "The fast, red car won the race."],
+      ["The dog was small.","The dog was fluffy.","It slept all day.", "The small, fluffy dog slept all day."],
+    ];
+    const [a,b,c,correct]=pick(sets);
+    const wrongs=[`${a} ${b} ${c}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which best combines these three sentences into one? "${a}" + "${b}" + "${c}"`, options, correctIndex,
+      explain:`"${correct}" combines the descriptions smoothly instead of repeating the subject three times.`}; },
 ];
 
 // ---- HISTORY: 6 fixed comprehension questions per topic (easy -> harder) ----
@@ -832,7 +1165,14 @@ function defaultTopicState(){
   // recentQuestions: last few question texts asked for this topic, so the
   // SAME question doesn't resurface round after round (not just within one
   // round) — see questionForTopic below.
-  return { tier:0, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0, recentQuestions:[] };
+  // sessionHistory: for Math/English, the last up-to-3 focused 10-question
+  // practice sessions AT THE CURRENT TIER ({correct,total} each) — this is
+  // the "3 rounds of 10, 95% combined" gate. readyForBonus flips true once
+  // that gate is met, unlocking the Level-Up Round. Both reset to [] / false
+  // whenever the tier changes. Unused by History, which keeps its own
+  // simpler per-question leveling (see recordAnswer).
+  return { tier:0, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0,
+    recentQuestions:[], sessionHistory:[], readyForBonus:false };
 }
 function defaultState(){
   const s = { history:[], updatedAt:0 };
@@ -863,6 +1203,24 @@ function migrateState(s){
       if(existing.needsReview === undefined) existing.needsReview = false;
       if(existing.roundsSince === undefined) existing.roundsSince = 0;
       if(!Array.isArray(existing.recentQuestions)) existing.recentQuestions = [];
+      if(!Array.isArray(existing.sessionHistory)) existing.sessionHistory = [];
+      if(existing.readyForBonus === undefined) existing.readyForBonus = false;
+      // Old tier scale was 0-3 (Year2 Basics, Year2 Advanced, Year3, Year4);
+      // new scale is 0-8 (Basic/Intermediate/Advanced within each of Year
+      // 2/3/4). Map conservatively so nobody's displayed level is overstated:
+      // old Year2-Basics/Advanced map to the SAME-MEANING new tier (0, 2).
+      // Old "reached Year3"/"reached Year4" map to the BASIC sub-level of
+      // that year (3, 6) rather than presuming Intermediate/Advanced, since
+      // the old rule to get there was much easier (2-in-a-row) than the new
+      // one (3 sessions of 10 at ≥95%) — he can re-earn those sub-levels
+      // properly rather than starting artificially "ahead."
+      if(CURRICULUM[subj].yearForTier && CURRICULUM[subj].yearForTier.length===9 && existing._migratedTierScale!=="v9"){
+        const OLD_TO_NEW_TIER = [0,2,3,6];
+        existing.tier = OLD_TO_NEW_TIER[Math.min(existing.tier,3)];
+        existing._migratedTierScale = "v9";
+        existing.sessionHistory = [];
+        existing.readyForBonus = false;
+      }
     }
   }
   if(s.updatedAt === undefined) s.updatedAt = 0;
@@ -1020,23 +1378,29 @@ function buildBonusRound(subject, topicIds){
   return questionsForTopicOrder(subject, order);
 }
 
+// HISTORY ONLY as of the Math/English topic-session redesign below (Math and
+// English now level up via buildTopicSession/finishTopicSession instead —
+// see those functions further down). History keeps this simpler per-question
+// rule since its 4-tier scale and small fixed question pool don't fit the
+// same "3 sessions of 10, 95%" model.
+//
 // Leveling rule: a topic only gets harder once it's been answered correctly
 // twice in a row at the current tier (no mistakes in between). A topic only
 // gets easier after two mistakes in a row at the current tier — a single
 // slip doesn't knock him down a level, it just flags the topic for a bit
-// more practice. Tier is capped 0-3 (Year 2 Basics through Year 4), so a
-// mastered topic never goes past the Year 4 ceiling. Returns what happened
-// so the UI can explain it.
+// more practice. Tier is capped 0-3 (Getting Started through Deeper
+// Thinking), so a mastered topic never goes past the ceiling. Returns what
+// happened so the UI can explain it.
 //
-// isBonus: bonus rounds deliberately repeat a weak topic several times in
-// one sitting (see buildBonusRound above) — that's reinforcement, not new
-// evidence of mastery. If tier/streak changes were allowed there, 2 lucky
-// guesses back-to-back inside a single 10-question bonus round could ratchet
-// a topic all the way from tier 0 to tier 3 (Year 4) in one sitting, which
-// is exactly the "level went up but that doesn't seem real" bug this guards
-// against. Bonus rounds still track attempts/correct (so accuracy % stays
-// meaningful) but never change tier, streaks, or the needsReview flag —
-// only real progress in a NORMAL round can move the needle.
+// isBonus: History's bonus round deliberately repeats a weak topic several
+// times in one sitting (see buildBonusRound above) — that's reinforcement,
+// not new evidence of mastery. If tier/streak changes were allowed there, 2
+// lucky guesses back-to-back inside a single 10-question bonus round could
+// ratchet a topic all the way up in one sitting, which is exactly the "level
+// went up but that doesn't seem real" bug this guards against. Bonus rounds
+// still track attempts/correct (so accuracy % stays meaningful) but never
+// change tier, streaks, or the needsReview flag — only real progress in a
+// NORMAL round can move the needle.
 function recordAnswer(subject, topicId, wasCorrect, isBonus){
   const t = STATE[subject].topics[topicId];
   const tierBefore = t.tier;
@@ -1072,6 +1436,83 @@ function subjectYear(subject){
   if(!cfg.yearForTier) return null;
   const tiers = cfg.topics.map(t => STATE[subject].topics[t.id].tier);
   return Math.min(...tiers.map(t => cfg.yearForTier[t]));
+}
+
+/* ---------------------------------------------------------------------
+   5b. TOPIC-FOCUSED PRACTICE SESSIONS (Math & English)
+   Replaces the old "2-in-a-row" per-question leveling for these two
+   subjects with an explicit, deliberate practice model:
+     1. Grayson picks ONE topic and plays a focused 10-question session
+        at that topic's current tier (Basic/Intermediate/Advanced within
+        Year 2, then Year 3, then Year 4 — 9 tiers total, capped at 8).
+     2. Each session's {correct,total} is kept in a rolling window of the
+        LAST 3 sessions played at that tier (sessionHistory, capped to 3).
+     3. Once 3 sessions exist and the combined accuracy across them is
+        >=95%, the topic is "ready" and unlocks a Level-Up Round.
+     4. The Level-Up Round is another 10 questions at the SAME tier; scoring
+        >=90% (9 or 10 out of 10 — 95% isn't a whole number on 10
+        questions, so this is the practical equivalent) advances the topic
+        to the next tier and resets its session history for the new tier.
+        Falling short doesn't penalize anything — he can keep practicing
+        and try the Level-Up Round again whenever he likes.
+   History is unaffected — it keeps its own simpler per-question rule
+   (recordAnswer above) since its content model (a handful of fixed
+   comprehension questions per topic) doesn't fit this structure.
+   --------------------------------------------------------------------- */
+const SESSION_LENGTH = 10;
+const SESSIONS_REQUIRED_FOR_BONUS = 3;
+const AGGREGATE_PASS_THRESHOLD = 0.95;   // across the last 3 practice sessions
+const LEVEL_UP_ROUND_THRESHOLD = 0.9;    // 9/10 or 10/10 on the Level-Up Round itself
+
+// Builds one focused 10-question session for a single topic at its current
+// tier. Reuses questionForTopic's per-topic recentQuestions memory (so
+// content doesn't repeat across sessions) plus a within-session usedTexts
+// set (so it never repeats within THIS session either).
+function buildTopicSession(subject, topicId){
+  const usedTexts = new Set();
+  const out = [];
+  for(let i=0;i<SESSION_LENGTH;i++) out.push(questionForTopic(subject, topicId, usedTexts));
+  return out;
+}
+
+// Called once, at the end of a focused session, with how many of the
+// SESSION_LENGTH questions were correct. Returns what the UI needs to show.
+function finishTopicSession(subject, topicId, correctCount, totalCount, isLevelUpRound){
+  const t = STATE[subject].topics[topicId];
+  const tierBefore = t.tier;
+  t.attempts += totalCount;
+  t.correct += correctCount;
+
+  if(isLevelUpRound){
+    const passed = (correctCount/totalCount) >= LEVEL_UP_ROUND_THRESHOLD;
+    if(passed){
+      const maxTier = CURRICULUM[subject].yearForTier.length - 1;
+      if(t.tier < maxTier) t.tier++;
+      t.sessionHistory = [];
+      t.readyForBonus = false;
+      t.needsReview = false;
+    }
+    // A miss on the Level-Up Round doesn't reset anything — he can just try
+    // again whenever he's ready; readyForBonus stays true.
+    saveState(STATE);
+    return { tierBefore, tierAfter:t.tier, passed, readyForBonus:t.readyForBonus };
+  }
+
+  // Regular practice session: push into the rolling window, capped to the
+  // last SESSIONS_REQUIRED_FOR_BONUS entries, then check the aggregate.
+  t.sessionHistory = [...t.sessionHistory, {correct:correctCount, total:totalCount}].slice(-SESSIONS_REQUIRED_FOR_BONUS);
+  t.needsReview = correctCount < totalCount;
+  let aggregatePct = null;
+  if(t.sessionHistory.length >= SESSIONS_REQUIRED_FOR_BONUS){
+    const sumCorrect = t.sessionHistory.reduce((a,s)=>a+s.correct,0);
+    const sumTotal = t.sessionHistory.reduce((a,s)=>a+s.total,0);
+    aggregatePct = Math.round((sumCorrect/sumTotal)*100);
+    t.readyForBonus = (sumCorrect/sumTotal) >= AGGREGATE_PASS_THRESHOLD;
+  } else {
+    t.readyForBonus = false;
+  }
+  saveState(STATE);
+  return { tierBefore, tierAfter:t.tier, readyForBonus:t.readyForBonus, sessionsDone:t.sessionHistory.length, aggregatePct };
 }
 
 /* ---------------------------------------------------------------------
@@ -1131,7 +1572,10 @@ function renderHome(){
   const subjectButtons = Object.keys(CURRICULUM).map((subj,i)=>{
     const cfg = CURRICULUM[subj];
     const wide = Object.keys(CURRICULUM).length % 2 === 1 && i === Object.keys(CURRICULUM).length-1;
-    return `<button class="subject-btn ${subj}${wide?' full-width':''}" onclick="startRound('${subj}')">
+    // Math/English: pick a topic to practice first (topic-focused sessions).
+    // History: unchanged — starts its own multi-topic reading round directly.
+    const action = cfg.isReading ? `startRound('${subj}')` : `renderTopicSelect('${subj}')`;
+    return `<button class="subject-btn ${subj}${wide?' full-width':''}" onclick="${action}">
       <span class="icon">${cfg.icon}</span> ${cfg.label}
     </button>`;
   }).join("");
@@ -1159,6 +1603,65 @@ function startRound(subject, focusTopicIds){
   currentIndex = 0;
   roundResults = [];
   if(!currentRound.length){ renderHome(); return; }
+  renderQuestion();
+}
+
+// Math/English topic picker: he chooses ONE topic and works through it with
+// a focused 10-question session, rather than a round mixing every topic
+// together. Shows each topic's current level and how close it is to
+// unlocking a Level-Up Round (3 practice sessions at >=95% combined).
+function renderTopicSelect(subject){
+  const cfg = CURRICULUM[subject];
+  const year = subjectYear(subject);
+  const maxTier = cfg.yearForTier.length - 1;
+  const rows = cfg.topics.map(t=>{
+    const s = STATE[subject].topics[t.id];
+    const atCeiling = s.tier >= maxTier;
+    let progressLine;
+    if(atCeiling){
+      progressLine = `<div class="explain" style="color:#a855f7; font-weight:600;">🏆 Mastered — Year 4 Advanced!</div>`;
+    } else if(s.readyForBonus){
+      progressLine = `<div class="explain" style="color:#d97706; font-weight:700;">🎯 Ready for the Level-Up Round!</div>`;
+    } else if(s.sessionHistory.length > 0){
+      const sumC = s.sessionHistory.reduce((a,x)=>a+x.correct,0), sumT = s.sessionHistory.reduce((a,x)=>a+x.total,0);
+      const pct = Math.round((sumC/sumT)*100);
+      progressLine = `<div class="explain">Practice sessions: ${s.sessionHistory.length}/${SESSIONS_REQUIRED_FOR_BONUS} · ${pct}% avg (needs 95% across 3 to unlock the next level)</div>`;
+    } else {
+      progressLine = `<div class="explain">No practice sessions yet at this level.</div>`;
+    }
+    const gapTag = s.needsReview ? ` <span style="color:#d97706; font-weight:700;">· needs practice</span>` : "";
+    const levelUpBtn = (!atCeiling && s.readyForBonus)
+      ? `<button class="bonus-btn" onclick="startTopicSession('${subject}','${t.id}',true)">🎯 Level-Up Round (10 Qs)</button>` : "";
+    return `<div class="summary-stat" style="display:block;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="topic-name">${t.name}${gapTag}</span>
+        <span class="tier-badge t${s.tier % 4}">${cfg.tierLabels[s.tier]}</span>
+      </div>
+      ${progressLine}
+      <button class="next-btn" style="margin-top:8px;" onclick="startTopicSession('${subject}','${t.id}',false)">Practice (10 Qs)</button>
+      ${levelUpBtn}
+    </div>`;
+  }).join("");
+  app.innerHTML = `
+    <div class="card">
+      <button class="back-link" onclick="renderHome()">Home</button>
+      <h1>${cfg.icon} ${cfg.label}</h1>
+      <p class="subject-summary">Currently working in: <strong>Year ${year}</strong> — pick a topic to practice.</p>
+      ${rows}
+    </div>`;
+}
+
+// Runs one focused 10-question session on a single topic, at its current
+// tier. isLevelUp=true means this IS the assessment round he unlocked by
+// hitting the 95% bar over his last 3 practice sessions — passing it
+// (>=90%) advances the topic to the next level.
+function startTopicSession(subject, topicId, isLevelUp){
+  currentSubject = subject;
+  primerAcknowledged = {};
+  currentRound = buildTopicSession(subject, topicId);
+  currentRoundMode = isLevelUp ? "levelup" : "practice";
+  currentIndex = 0;
+  roundResults = [];
   renderQuestion();
 }
 
@@ -1192,7 +1695,7 @@ function renderQuestion(){
     <div class="card">
       <button class="back-link" onclick="renderHome()">Exit</button>
       <div class="progress-strip">${dots}</div>
-      <span class="qtag${currentRoundMode==='bonus'?' bonus':''}">${currentRoundMode==='bonus'?'Bonus · ':''}${topicName} · Q${currentIndex+1} of ${total}</span>
+      <span class="qtag${(currentRoundMode==='bonus'||currentRoundMode==='levelup')?' bonus':''}">${currentRoundMode==='bonus'?'Bonus · ':currentRoundMode==='levelup'?'Level-Up · ':''}${topicName} · Q${currentIndex+1} of ${total}</span>
       <p class="question">${q.q}</p>
       <div class="options" id="options">
         ${q.options.map((opt,i)=>`<button class="opt" data-i="${i}" onclick="answer(${i})">${opt}</button>`).join("")}
@@ -1210,13 +1713,21 @@ function answer(i){
     else if(idx === i) btn.classList.add("incorrect");
   });
   const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
-  const result = recordAnswer(currentSubject, q.topicId, wasCorrect, currentRoundMode === "bonus");
+  // History still levels per-question (recordAnswer, unchanged). Math/English
+  // now level via whole SESSIONS (finishTopicSession, called once at the end
+  // in renderSummary) — so per-question we just track the answer, no tier
+  // change happens here for those two subjects.
+  let leveledUp = false, leveledDown = false;
+  if(CURRICULUM[currentSubject].isReading){
+    const result = recordAnswer(currentSubject, q.topicId, wasCorrect, currentRoundMode === "bonus");
+    leveledUp = result.leveledUp; leveledDown = result.leveledDown;
+  }
   roundResults.push({
     topicId:q.topicId, topicName, correct:wasCorrect,
-    question:q.q, explain:q.explain, leveledUp:result.leveledUp, leveledDown:result.leveledDown
+    question:q.q, explain:q.explain, leveledUp, leveledDown
   });
   const fb = document.getElementById("feedbackZone");
-  const levelNote = result.leveledUp
+  const levelNote = leveledUp
     ? `<div class="explain" style="color:#16a34a; font-weight:600;">⬆ Leveled up in ${topicName} — two correct in a row at this level!</div>`
     : "";
   fb.innerHTML = `
@@ -1233,6 +1744,7 @@ function nextQuestion(){
 }
 
 function renderSummary(){
+  if(!CURRICULUM[currentSubject].isReading){ renderTopicSessionSummary(); return; }
   const correctCount = roundResults.filter(r=>r.correct).length;
   const total = roundResults.length;
   const pct = Math.round((correctCount/total)*100);
@@ -1294,6 +1806,66 @@ function renderSummary(){
     </div>`;
 }
 
+// Math/English summary for a single-topic focused session (practice OR the
+// Level-Up Round). Calls finishTopicSession exactly once, here, at the end
+// of the 10 questions — this is the ONLY place Math/English tier changes
+// happen now (see the big comment above finishTopicSession for why).
+function renderTopicSessionSummary(){
+  const subject = currentSubject;
+  const topicId = currentRound[0].topicId;
+  const cfg = CURRICULUM[subject];
+  const topicName = cfg.topics.find(t=>t.id===topicId).name;
+  const isLevelUp = currentRoundMode === "levelup";
+  const correctCount = roundResults.filter(r=>r.correct).length;
+  const total = roundResults.length;
+  const pct = Math.round((correctCount/total)*100);
+  const emoji = pct >= 80 ? "🏆" : pct >= 50 ? "👍" : "💪";
+  const yearBefore = subjectYear(subject);
+
+  const result = finishTopicSession(subject, topicId, correctCount, total, isLevelUp);
+
+  const yearAfter = subjectYear(subject);
+  const yearBannerHTML = (yearAfter > yearBefore)
+    ? `<div class="year-banner">🎓 Amazing work — moving into Year ${yearAfter} for ${cfg.label}!</div>`
+    : "";
+
+  let statusHTML;
+  if(isLevelUp){
+    statusHTML = result.passed
+      ? `<div class="year-banner">🎉 Leveled up! ${topicName} is now <strong>${cfg.tierLabels[result.tierAfter]}</strong>.</div>`
+      : `<p class="explain" style="margin-top:10px;">Not quite this time — needed at least 9/10. No penalty though: keep practicing and try the Level-Up Round again whenever you're ready.</p>`;
+  } else if(result.readyForBonus){
+    statusHTML = `<p class="explain" style="margin-top:10px; color:#d97706; font-weight:700;">🎯 3 strong sessions in a row (${result.aggregatePct}% average) — ${topicName} is ready for the Level-Up Round!</p>`;
+  } else if(result.aggregatePct !== null){
+    statusHTML = `<p class="explain" style="margin-top:10px;">Last 3 sessions on ${topicName}: ${result.aggregatePct}% average. Needs 95% to unlock the Level-Up Round — a session or two more should do it.</p>`;
+  } else {
+    statusHTML = `<p class="explain" style="margin-top:10px;">Session ${result.sessionsDone} of ${SESSIONS_REQUIRED_FOR_BONUS} towards unlocking the next level for ${topicName}.</p>`;
+  }
+
+  const missed = roundResults.filter(r=>!r.correct);
+  const missedHTML = missed.length
+    ? missed.slice(0,3).map(m=>`<div class="summary-stat" style="display:block;"><div class="explain">${m.explain}</div></div>`).join("")
+    : `<div class="summary-stat" style="border:none;"><span style="color:#16a34a; font-weight:600;">Perfect session! 🎉</span></div>`;
+
+  const levelUpBtnHTML = (!isLevelUp && result.readyForBonus)
+    ? `<button class="bonus-btn" onclick="startTopicSession('${subject}','${topicId}',true)">🎯 Level-Up Round (10 Qs)</button>` : "";
+
+  app.innerHTML = `
+    <div class="card">
+      <div class="big-emoji">${emoji}</div>
+      <h1 style="text-align:center;">${correctCount} / ${total} correct</h1>
+      <p class="subtitle" style="text-align:center;">${topicName}${isLevelUp?' — Level-Up Round':' — practice session'} complete.</p>
+      ${yearBannerHTML}
+      ${statusHTML}
+      <h1 style="font-size:1.05rem; margin-top:18px;">What to review</h1>
+      ${missedHTML}
+      ${levelUpBtnHTML}
+      <button class="next-btn" onclick="startTopicSession('${subject}','${topicId}',false)">Practice again</button>
+      <button class="dashboard-btn" onclick="renderTopicSelect('${subject}')">Back to ${cfg.label} topics</button>
+      <button class="back-link" style="margin-top:10px;" onclick="renderHome()">Home</button>
+    </div>`;
+}
+
 function renderDashboard(){
   const sections = Object.keys(CURRICULUM).map(subject=>{
     const cfg = CURRICULUM[subject];
@@ -1304,10 +1876,11 @@ function renderDashboard(){
     const rows = cfg.topics.map(t=>{
       const s = STATE[subject].topics[t.id];
       const acc = s.attempts ? Math.round((s.correct/s.attempts)*100) : null;
-      const gapTag = s.needsReview ? ` <span style="color:#d97706; font-weight:700;">· gap</span>` : "";
+      const readyTag = s.readyForBonus ? ` <span style="color:#d97706; font-weight:700;">· ready to level up!</span>` : "";
+      const gapTag = (!s.readyForBonus && s.needsReview) ? ` <span style="color:#d97706; font-weight:700;">· gap</span>` : "";
       return `<div class="summary-stat">
-        <span class="topic-name">${t.name}${gapTag}</span>
-        <span><span class="tier-badge t${s.tier}">${cfg.tierLabels[s.tier]}</span> ${acc!==null?` · ${acc}%`:""}</span>
+        <span class="topic-name">${t.name}${gapTag}${readyTag}</span>
+        <span><span class="tier-badge t${s.tier % 4}">${cfg.tierLabels[s.tier]}</span> ${acc!==null?` · ${acc}%`:""}</span>
       </div>`;
     }).join("");
     return `<h1 style="font-size:1.1rem; margin-top:18px;">${cfg.icon} ${cfg.label}</h1>${summaryLine}${rows}`;
@@ -1328,6 +1901,8 @@ window.nextQuestion = nextQuestion;
 window.acknowledgePrimer = acknowledgePrimer;
 window.renderHome = renderHome;
 window.renderDashboard = renderDashboard;
+window.renderTopicSelect = renderTopicSelect;
+window.startTopicSession = startTopicSession;
 
 renderHome();
 
