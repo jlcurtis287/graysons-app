@@ -295,7 +295,7 @@ const G = { math:{}, english:{}, history:{} };
 // 9 tiers: Year2 Basic/Intermediate/Advanced, Year3 B/I/A, Year4 B/I/A —
 // number range and rounding granularity both step up smoothly.
 G.math.place_value = [
-  () => { const n=randInt(11,20); const correct=Math.floor(n/10)*10;
+  () => { const n=randInt(11,40); const correct=Math.floor(n/10)*10;
     const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct+1,n]);
     return {q:`In the number ${n}, what is the value of the tens digit?`, options, correctIndex,
       explain:`${n} = ${Math.floor(n/10)} tens and ${n%10} ones, so the tens digit is worth ${correct}.`}; },
@@ -410,27 +410,29 @@ G.math.mult_div = [
 
 // ---- MATH: Fractions & Decimals ----
 G.math.fractions = [
-  () => { const denom=2; const noun=pick(["shape","pizza","cake","chocolate bar"]); const correct=`1/${denom}`;
+  () => { const denom=2; const noun=pick(["shape","pizza","cake","chocolate bar","sandwich","orange","apple","cookie","pie","banana","granola bar","brownie","pancake","waffle","tortilla"]); const correct=`1/${denom}`;
     const wrongs=[`1/4`,`${denom-1}/${denom}`,`2/${denom}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
     return {q:`A ${noun} is split into ${denom} equal parts and 1 part is shaded. What fraction is shaded?`,
       options, correctIndex, explain:`1 shaded part out of ${denom} equal parts = 1/${denom}.`}; },
-  () => { const denom=pick([2,4]); const correct=`1/${denom}`;
+  () => { const denom=pick([2,4]); const noun=pick(["shape","pizza","cake","chocolate bar","sandwich","orange","apple","cookie"]); const correct=`1/${denom}`;
     const wrongs=[`1/${denom===2?4:2}`,`${denom-1}/${denom}`,`2/${denom}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
-    return {q:`A shape is split into ${denom} equal parts and 1 part is shaded. What fraction is shaded?`,
+    return {q:`A ${noun} is split into ${denom} equal parts and 1 part is shaded. What fraction is shaded?`,
       options, correctIndex, explain:`1 shaded part out of ${denom} equal parts = 1/${denom}.`}; },
-  () => { const denom=pick([2,3]); const mult=randInt(2,3);
+  () => { const denom=randInt(2,9); const mult=randInt(2,3);
     const correct=`${1*mult}/${denom*mult}`;
     const wrongs=[`1/${denom}`,`${mult}/${denom}`,`${1*mult}/${denom+mult}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
-    return {q:`Which fraction is equivalent to 1/${denom}?`, options, correctIndex,
+    const phrasing = pick([`Which fraction is equivalent to 1/${denom}?`,`Which of these fractions equals 1/${denom}?`]);
+    return {q:phrasing, options, correctIndex,
       explain:`Multiply top and bottom by ${mult}: 1/${denom} = ${1*mult}/${denom*mult}.`}; },
-  () => { const denom=pick([2,3,4,5]); const mult=randInt(2,4);
+  () => { const denom=randInt(2,9); const mult=randInt(2,4);
     const correct=`${1*mult}/${denom*mult}`;
     const wrongs=[`1/${denom}`,`${mult}/${denom}`,`${1*mult}/${denom+mult}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
-    return {q:`Which fraction is equivalent to 1/${denom}?`, options, correctIndex,
+    const phrasing = pick([`Which fraction is equivalent to 1/${denom}?`,`Which of these fractions equals 1/${denom}?`]);
+    return {q:phrasing, options, correctIndex,
       explain:`Multiply top and bottom by ${mult}: 1/${denom} = ${1*mult}/${denom*mult}.`}; },
   () => { const denom=pick([2,4]); const whole=randInt(20,60); const correct=(whole/denom);
     const {options,correctIndex}=makeMCQ(correct,[correct+denom,correct-denom,whole/2]);
@@ -441,7 +443,8 @@ G.math.fractions = [
   () => { const tenths=randInt(1,9); const correct=`0.${tenths}`;
     const wrongs=[`${tenths}.0`,`0.0${tenths}`,`1.${tenths}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
-    return {q:`Write ${tenths}/10 as a decimal.`, options, correctIndex, explain:`${tenths}/10 = 0.${tenths}.`}; },
+    const phrasing = pick([`Write ${tenths}/10 as a decimal.`,`What is ${tenths} tenths written as a decimal?`,`Express ${tenths}/10 in decimal form.`]);
+    return {q:phrasing, options, correctIndex, explain:`${tenths}/10 = 0.${tenths}.`}; },
   () => { const denom=pick([3,6,8]); const whole=randInt(30,120); const correct=(whole/denom);
     const {options,correctIndex}=makeMCQ(correct,[correct+denom,correct-denom,whole/2]);
     return {q:`What is 1/${denom} of ${whole}?`, options, correctIndex, explain:`${whole} ÷ ${denom} = ${correct}.`}; },
@@ -456,7 +459,8 @@ G.math.measurement = [
   () => { const h=randInt(1,12); const correct=`${h} o'clock`;
     const wrongs=[`${h===12?1:h+1} o'clock`,`Half past ${h}`,`Quarter past ${h}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
-    return {q:`The clock shows ${h}:00. What time is this?`, options, correctIndex,
+    const phrasing = pick([`The clock shows ${h}:00. What time is this?`,`It's ${h}:00. How do you say this time?`]);
+    return {q:phrasing, options, correctIndex,
       explain:`${h}:00 is "${correct}".`}; },
   () => { const h=randInt(1,12); const half=Math.random()<0.5;
     const correct = half ? `Half past ${h}` : `${h} o'clock`;
@@ -464,7 +468,7 @@ G.math.measurement = [
     const {options,correctIndex}=makeMCQ(correct,wrongs);
     return {q:`The clock shows ${h}:${half?"30":"00"}. What time is this?`, options, correctIndex,
       explain:`${h}:${half?"30":"00"} is "${correct}".`}; },
-  () => { const pounds=randInt(1,5), pence=pick([0,50]); const correct=`£${pounds}.${pence.toString().padStart(2,"0")}`;
+  () => { const pounds=randInt(1,9), pence=pick([0,50]); const correct=`£${pounds}.${pence.toString().padStart(2,"0")}`;
     const wrongs=[`£${pounds+1}.${pence.toString().padStart(2,"0")}`,`£${pounds}.${pence===0?"50":"00"}`,`£${pounds+1}.00`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`I have coins worth £${pounds}.${pence.toString().padStart(2,"0")} in total. How is that written?`,
@@ -501,36 +505,40 @@ G.math.measurement = [
 ];
 
 // ---- MATH: Geometry ----
-const SHAPES2D = [["triangle",3],["square",4],["pentagon",5],["hexagon",6],["rectangle",4],["octagon",8]];
-const SHAPES2D_BASIC = [["triangle",3],["square",4],["pentagon",5]];
+const SHAPES2D = [["triangle",3],["square",4],["pentagon",5],["hexagon",6],["rectangle",4],["octagon",8],["heptagon",7]];
+const SHAPES2D_BASIC = [["triangle",3],["square",4],["pentagon",5],["rectangle",4],["hexagon",6]];
 const SHAPES3D = [["cube",6],["cuboid",6],["sphere",0],["cylinder",2],["cone",1],["square pyramid",5]];
-const SHAPES3D_BASIC = [["cube",6],["sphere",0],["cylinder",2]];
+const SHAPES3D_BASIC = [["cube",6],["sphere",0],["cylinder",2],["cone",1]];
+const SIDES_PHRASINGS = (name) => [`How many sides does a ${name} have?`,`A ${name} has how many sides?`,`Can you tell me how many sides a ${name} has?`];
+const FACES_PHRASINGS = (name) => [`How many faces does a ${name} have?`,`A ${name} has how many faces?`,`Can you tell me how many faces a ${name} has?`];
 G.math.geometry = [
   () => { const [name,sides]=pick(SHAPES2D_BASIC); const correct=sides;
     const {options,correctIndex}=makeMCQ(correct,[sides-1,sides+1,sides+2]);
-    return {q:`How many sides does a ${name} have?`, options, correctIndex, explain:`A ${name} has ${sides} sides.`}; },
+    return {q:pick(SIDES_PHRASINGS(name)), options, correctIndex, explain:`A ${name} has ${sides} sides.`}; },
   () => { const [name,sides]=pick(SHAPES2D); const correct=sides;
     const {options,correctIndex}=makeMCQ(correct,[sides-1,sides+1,sides+2]);
-    return {q:`How many sides does a ${name} have?`, options, correctIndex, explain:`A ${name} has ${sides} sides.`}; },
+    return {q:pick(SIDES_PHRASINGS(name)), options, correctIndex, explain:`A ${name} has ${sides} sides.`}; },
   () => { const [name,faces]=pick(SHAPES3D_BASIC); const correct=faces;
     const otherFaceCounts = SHAPES3D_BASIC.filter(s=>s[0]!==name).map(s=>s[1]);
     const {options,correctIndex}=makeMCQ(correct, otherFaceCounts);
-    return {q:`How many faces does a ${name} have?`, options, correctIndex, explain:`A ${name} has ${faces} faces.`}; },
+    return {q:pick(FACES_PHRASINGS(name)), options, correctIndex, explain:`A ${name} has ${faces} faces.`}; },
   () => { const [name,faces]=pick(SHAPES3D); const correct=faces;
     // Distractors are other real shapes' face counts (always >= 0) rather than
     // arithmetic offsets, which could otherwise land on nonsense like "-1 faces".
     const otherFaceCounts = SHAPES3D.filter(s=>s[0]!==name).map(s=>s[1]);
     const {options,correctIndex}=makeMCQ(correct, otherFaceCounts);
-    return {q:`How many faces does a ${name} have?`, options, correctIndex, explain:`A ${name} has ${faces} faces.`}; },
+    return {q:pick(FACES_PHRASINGS(name)), options, correctIndex, explain:`A ${name} has ${faces} faces.`}; },
   () => { const angle=pick(["acute","right"]); const desc={acute:"less than 90°", right:"exactly 90°"};
     const wrongOpts = Object.keys(desc).filter(k=>k!==angle);
     const {options,correctIndex}=makeMCQ(desc[angle], wrongOpts.map(k=>desc[k]));
-    return {q:`What describes a ${angle} angle?`, options, correctIndex, explain:`A ${angle} angle is ${desc[angle]}.`}; },
+    const phrasing = pick([`What describes a ${angle} angle?`,`Which best describes a ${angle} angle?`,`An angle that is ${desc[angle]} is called what?`,`How would you describe a ${angle} angle?`,`Which phrase fits a ${angle} angle?`,`A ${angle} angle measures what?`]);
+    return {q:phrasing, options, correctIndex, explain:`A ${angle} angle is ${desc[angle]}.`}; },
   () => { const angle=pick(["acute","right","obtuse","reflex"]); const desc={
       acute:"less than 90°", right:"exactly 90°", obtuse:"between 90° and 180°", reflex:"more than 180°"};
     const wrongOpts = Object.keys(desc).filter(k=>k!==angle);
     const {options,correctIndex}=makeMCQ(desc[angle], wrongOpts.map(k=>desc[k]));
-    return {q:`What describes a ${angle} angle?`, options, correctIndex, explain:`A ${angle} angle is ${desc[angle]}.`}; },
+    const phrasing = pick([`What describes a ${angle} angle?`,`Which best describes a ${angle} angle?`,`An angle that is ${desc[angle]} is called what?`]);
+    return {q:phrasing, options, correctIndex, explain:`A ${angle} angle is ${desc[angle]}.`}; },
   () => { const x=randInt(1,4), y=randInt(1,4); const correct=`(${x}, ${y})`;
     const wrongs=[`(${y}, ${x})`,`(${x+1}, ${y})`,`(${x}, ${y+1})`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(v)=>String(v));
@@ -546,6 +554,14 @@ G.math.geometry = [
       ["A shape has 4 right angles but its sides aren't all equal. What shape is it?","Rectangle",["Square","Triangle","Hexagon"],"A rectangle has 4 right angles like a square, but only opposite sides match — a square's sides are ALL equal."],
       ["A shape has 3 sides and 3 angles. What shape is it?","Triangle",["Square","Pentagon","Hexagon"],"A triangle is the only shape with exactly 3 sides and 3 angles."],
       ["A shape has 0 straight sides and no corners at all. What shape is it?","Circle",["Square","Triangle","Octagon"],"A circle is perfectly round with no straight sides or corners."],
+      ["A shape has 5 sides and 5 angles. What shape is it?","Pentagon",["Hexagon","Square","Octagon"],"A pentagon has exactly 5 sides and 5 angles."],
+      ["A shape has 6 sides and 6 angles. What shape is it?","Hexagon",["Pentagon","Heptagon","Octagon"],"A hexagon has exactly 6 sides and 6 angles."],
+      ["A shape has 8 sides and 8 angles. What shape is it?","Octagon",["Hexagon","Heptagon","Pentagon"],"An octagon has exactly 8 sides and 8 angles."],
+      ["A 3D shape has 6 flat square faces and looks like a dice. What shape is it?","Cube",["Cuboid","Sphere","Cylinder"],"A cube has 6 equal square faces, like a dice."],
+      ["A 3D shape is perfectly round with no faces, edges, or corners. What shape is it?","Sphere",["Cube","Cylinder","Cone"],"A sphere is perfectly round all over, like a ball."],
+      ["A 3D shape has 2 flat circular ends and one curved surface, like a can. What shape is it?","Cylinder",["Cone","Sphere","Cube"],"A cylinder has 2 flat circular ends joined by a curved side, like a tin can."],
+      ["A 3D shape has a circular base and comes to a single point at the top, like an ice cream. What shape is it?","Cone",["Cylinder","Sphere","Square pyramid"],"A cone has one circular base and narrows to a point, like an ice cream cone."],
+      ["A 3D shape has 6 rectangular faces but isn't a perfect cube. What shape is it?","Cuboid",["Cube","Sphere","Cylinder"],"A cuboid has 6 rectangular faces, like a cube but not all sides equal."],
     ];
     const [q,correct,wrongs,explain]=pick(riddles);
     const {options,correctIndex}=makeMCQ(correct,wrongs);
@@ -579,16 +595,19 @@ G.math.statistics = [
     const {options,correctIndex}=makeMCQ(total,[total-2,total+2,total-1]);
     return {q:`A bar chart shows 4 bars with values ${vals.join(", ")}. What is the total?`, options, correctIndex,
       explain:`${vals.join(" + ")} = ${total}.`}; },
-  () => { const sets=[[2,2,3,4],[5,6,6,7],[1,1,2,3],[8,9,9,10]];
+  () => { const sets=[[2,2,3,4],[5,6,6,7],[1,1,2,3],[8,9,9,10],[3,4,4,5],[6,7,7,8],[2,3,3,5],[7,8,8,9],[1,2,2,4],[9,10,10,11],[4,4,5,6],[10,11,11,12]];
     const vals=pick(sets); const correct=vals[0]===vals[1]?vals[0]:vals[1];
     const others=[...new Set(vals)].filter(v=>v!==correct);
     const {options,correctIndex}=makeMCQ(correct,others);
     return {q:`In the data set ${vals.join(", ")}, which number appears most often (the mode)?`, options, correctIndex,
       explain:`${correct} appears most often, so the mode is ${correct}.`}; },
-  () => { const vals=[2,3,3,4,5,3]; const correct=3;
-    const {options,correctIndex}=makeMCQ(correct,[2,4,5]);
+  () => { const sets=[[2,3,3,4,5,3],[1,2,2,2,4,5],[6,7,8,7,7,9],[3,3,3,5,6,7],[4,5,6,5,5,8],[9,9,9,10,11,12],[2,4,4,4,6,7],[5,6,6,6,8,9],[3,4,5,4,4,7],[8,8,8,9,10,11],[1,3,3,3,5,6],[7,9,9,9,10,12]];
+    const vals=pick(sets); const counts={}; vals.forEach(v=>counts[v]=(counts[v]||0)+1);
+    const correct=Number(Object.keys(counts).reduce((a,b)=>counts[a]>counts[b]?a:b));
+    const others=[...new Set(vals)].filter(v=>v!==correct).slice(0,3);
+    const {options,correctIndex}=makeMCQ(correct,others);
     return {q:`In the data set ${vals.join(", ")}, which number appears most often (the mode)?`, options, correctIndex,
-      explain:`3 appears most often, so the mode is 3.`}; },
+      explain:`${correct} appears most often, so the mode is ${correct}.`}; },
   () => { const vals=[randInt(1,5),randInt(6,10)]; const range=Math.max(...vals)-Math.min(...vals);
     const {options,correctIndex}=makeMCQ(range,[range+1,range-1,Math.max(...vals)]);
     return {q:`A data set has values ${vals.join(", ")}. What is the range (highest minus lowest)?`, options, correctIndex,
@@ -597,7 +616,7 @@ G.math.statistics = [
     const {options,correctIndex}=makeMCQ(range,[range+1,range-1,Math.max(...vals)]);
     return {q:`A data set has values ${vals.join(", ")}. What is the range (highest minus lowest)?`, options, correctIndex,
       explain:`${Math.max(...vals)} - ${Math.min(...vals)} = ${range}.`}; },
-  () => { const mid=randInt(3,10); const vals=[mid-2,mid,mid+2]; const total=vals.reduce((a,b)=>a+b,0); const correct=total/3;
+  () => { const mid=randInt(3,30); const vals=[mid-2,mid,mid+2]; const total=vals.reduce((a,b)=>a+b,0); const correct=total/3;
     const {options,correctIndex}=makeMCQ(correct,[correct+1,correct-1,total]);
     return {q:`What is the mean (average) of ${vals.join(", ")}?`, options, correctIndex,
       explain:`(${vals.join(" + ")}) ÷ 3 = ${correct}.`}; },
@@ -605,7 +624,7 @@ G.math.statistics = [
 
 // ---- MATH: Reasoning / word problems ----
 G.math.reasoning = [
-  () => { const price=randInt(2,5); const qty=randInt(2,4); const correct=price*qty;
+  () => { const price=randInt(2,6); const qty=randInt(2,5); const correct=price*qty;
     const {options,correctIndex}=makeMCQ(correct,[correct+price,correct-price,price+qty]);
     return {q:`Toy cars cost £${price} each. How much for ${qty} toy cars?`, options, correctIndex,
       explain:`${qty} × £${price} = £${correct}.`}; },
@@ -647,106 +666,108 @@ G.math.reasoning = [
 // 9 tiers: each pair of grammar concepts gets a Year, escalating from Noun/Verb
 // through to a full mixed-class challenge at Year 4 Advanced.
 G.english.word_classes = [
-  () => { const nouns=["car","dog","cat","ball"]; const verbs=["run","jump","play","eat"];
+  () => { const nouns=["car","dog","cat","ball","train","house","tree","book"]; const verbs=["run","jump","play","eat","swim","climb","laugh","sing"];
     const isNoun=Math.random()<0.5; const word=isNoun?pick(nouns):pick(verbs);
     const correct=isNoun?"Noun":"Verb";
     const {options,correctIndex}=makeMCQ(correct,["Noun","Verb"]);
     return {q:`${introSentence("Noun","Verb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const nouns=["car","dog","engine","castle","planet"]; const verbs=["run","build","jump","design","explore"];
+  () => { const nouns=["car","dog","engine","castle","planet","rocket","volcano","museum"]; const verbs=["run","build","jump","design","explore","invent","discover","launch"];
     const isNoun=Math.random()<0.5; const word=isNoun?pick(nouns):pick(verbs);
     const correct=isNoun?"Noun":"Verb";
     const {options,correctIndex}=makeMCQ(correct,["Noun","Verb","Adjective"]);
     return {q:`${introSentence("Noun","Verb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const adjs=["shiny","tall","happy","fast"]; const nouns=["car","dog","castle","rocket"];
+  () => { const adjs=["shiny","tall","happy","fast","huge","brave","curious","ancient"]; const nouns=["car","dog","castle","rocket","engine","planet","museum","volcano"];
     const isAdj=Math.random()<0.5; const word=isAdj?pick(adjs):pick(nouns);
     const correct=isAdj?"Adjective":"Noun";
     const {options,correctIndex}=makeMCQ(correct,["Adjective","Noun"]);
     return {q:`${introSentence("Adjective","Noun")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is ${correct==="Adjective"?"an":"a"} ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const adjs=["shiny","enormous","curious","rusty"]; const advs=["quickly","carefully","loudly","bravely"];
+  () => { const adjs=["shiny","enormous","curious","rusty","ancient","brilliant","fearless","mysterious"]; const advs=["quickly","carefully","loudly","bravely","silently","eagerly","cleverly","gently"];
     const isAdj=Math.random()<0.5; const word=isAdj?pick(adjs):pick(advs);
     const correct=isAdj?"Adjective":"Adverb";
     const {options,correctIndex}=makeMCQ(correct,["Adjective","Adverb","Noun"]);
     return {q:`${introSentence("Adjective","Adverb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is an ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const pronouns=["he","she","it","they"]; const nouns=["car","dog","castle","rocket"];
+  () => { const pronouns=["he","she","it","they","we","you","I","them"]; const nouns=["car","dog","castle","rocket","engine","planet","museum","volcano"];
     const isPro=Math.random()<0.5; const word=isPro?pick(pronouns):pick(nouns);
     const correct=isPro?"Pronoun":"Noun";
     const {options,correctIndex}=makeMCQ(correct,["Pronoun","Noun"]);
     return {q:`${introSentence("Pronoun","Noun")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const pronouns=["he","she","it","they","we"]; const conjunctions=["and","but","because","although"];
+  () => { const pronouns=["he","she","it","they","we","you","I","them"]; const conjunctions=["and","but","because","although","or","since","while","unless"];
     const isPro=Math.random()<0.5; const word=isPro?pick(pronouns):pick(conjunctions);
     const correct=isPro?"Pronoun":"Conjunction";
     const {options,correctIndex}=makeMCQ(correct,["Pronoun","Conjunction","Preposition"]);
     return {q:`${introSentence("Pronoun","Conjunction")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const preps=["under","beside","through","between"]; const verbs=["run","jump","build","explore"];
+  () => { const preps=["under","beside","through","between","above","behind","near","across"]; const verbs=["run","jump","build","explore","invent","discover","launch","climb"];
     const isPrep=Math.random()<0.5; const word=isPrep?pick(preps):pick(verbs);
     const correct=isPrep?"Preposition":"Verb";
     const {options,correctIndex}=makeMCQ(correct,["Preposition","Verb"]);
     return {q:`${introSentence("Preposition","Verb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const preps=["under","beside","through","between"]; const properNouns=["London","Grayson","Tuesday","Mars"];
+  () => { const preps=["under","beside","through","between","above","behind","near","across"]; const properNouns=["London","Grayson","Tuesday","Mars","England","December","Everest","Paris"];
     const isPrep=Math.random()<0.5; const word=isPrep?pick(preps):pick(properNouns);
     const correct=isPrep?"Preposition":"Proper noun";
     const {options,correctIndex}=makeMCQ(correct,["Preposition","Proper noun","Common noun"]);
     return {q:`${introSentence("Preposition","Proper noun")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const pool=[["car","Noun"],["run","Verb"],["shiny","Adjective"],["quickly","Adverb"],["he","Pronoun"],["but","Conjunction"],["under","Preposition"],["London","Proper noun"]];
+  () => { const pool=[["car","Noun"],["run","Verb"],["shiny","Adjective"],["quickly","Adverb"],["he","Pronoun"],["but","Conjunction"],["under","Preposition"],["London","Proper noun"],
+      ["rocket","Noun"],["explore","Verb"],["ancient","Adjective"],["bravely","Adverb"],["they","Pronoun"],["because","Conjunction"],["beside","Preposition"],["Mars","Proper noun"]];
     const [word,correct]=pick(pool);
-    const wrongClasses = shuffle(pool.filter(p=>p[1]!==correct).map(p=>p[1])).slice(0,3);
+    const wrongClasses = shuffle([...new Set(pool.filter(p=>p[1]!==correct).map(p=>p[1]))]).slice(0,3);
     const {options,correctIndex}=makeMCQ(correct,wrongClasses);
     return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
 ];
 
 // ---- ENGLISH: Sentence Structure ----
 G.english.sentence_structure = [
-  () => { const complete=["The dog barked.","Grayson ran fast.","The car stopped.","Emma laughed."]; const fragment=["Running fast","Under the table","Near the door","Down the hill"];
+  () => { const complete=["The dog barked.","Grayson ran fast.","The car stopped.","Emma laughed.","The bird flew away.","The cake tasted great.","Oliver won the race.","The engine started."];
+    const fragment=["Running fast","Under the table","Near the door","Down the hill","Behind the wall","After the storm","Full of energy","Next to the school"];
     const isComplete=Math.random()<0.5; const text=isComplete?pick(complete):pick(fragment);
     const correct=isComplete?"Complete sentence":"Sentence fragment";
     const {options,correctIndex}=makeMCQ(correct,["Complete sentence","Sentence fragment"]);
     return {q:`${introSentence("Complete sentence","Sentence fragment")}Is this a complete sentence or a fragment? "${text}"`, options, correctIndex,
       explain:`"${text}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const complete=["The dog barked loudly.","Grayson built a tower.","The car raced down the hill.","Scientists study the stars."];
-    const fragment=["Running down the street","Because it was raining","Under the old bridge","Building a rocket ship"];
+  () => { const complete=["The dog barked loudly.","Grayson built a tower.","The car raced down the hill.","Scientists study the stars.","The rocket soared into space.","Emma painted a bright picture.","The team practiced every day.","The volcano erupted suddenly."];
+    const fragment=["Running down the street","Because it was raining","Under the old bridge","Building a rocket ship","While the crowd watched","After the long journey","Full of excitement","Near the ancient castle"];
     const isComplete=Math.random()<0.5; const text=isComplete?pick(complete):pick(fragment);
     const correct=isComplete?"Complete sentence":"Sentence fragment";
     const {options,correctIndex}=makeMCQ(correct,["Complete sentence","Sentence fragment"]);
     return {q:`${introSentence("Complete sentence","Sentence fragment")}Is this a complete sentence or a fragment? "${text}"`, options, correctIndex,
       explain:`"${text}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const simple=["The car stopped.","She likes science."]; const compound=["The car stopped, and the driver got out.","She likes science, but she loves art more."];
+  () => { const simple=["The car stopped.","She likes science.","The dog slept.","Grayson smiled.","The bird sang.","Oliver ran.","The rain fell.","Emma waited."]; const compound=["The car stopped, and the driver got out.","She likes science, but she loves art more.","The dog slept, and the cat watched.","Grayson smiled, but he stayed quiet.","The bird sang, and everyone listened.","Oliver ran, but he was too slow.","The rain fell, and the streets got wet.","Emma waited, but the bus never came."];
     const isSimple=Math.random()<0.5; const text=isSimple?pick(simple):pick(compound);
     const correct=isSimple?"Simple sentence":"Compound sentence";
     const {options,correctIndex}=makeMCQ(correct,["Simple sentence","Compound sentence"]);
     return {q:`${introSentence("Simple sentence","Compound sentence")}Is this a simple or compound sentence? "${text}"`, options, correctIndex,
       explain:`It's a ${correct.toLowerCase()}${withDef(correct)} — ${isSimple?"one idea":"two ideas joined by a conjunction"}.`}; },
-  () => { const simple=["The car stopped.","She likes science.","Grayson built a tower.","The engine roared."];
-    const compound=["The car stopped, and the driver got out.","She likes science, but she loves art more.","Grayson built a tower, and it didn't fall.","The engine roared, but the car stayed still."];
+  () => { const simple=["The car stopped.","She likes science.","Grayson built a tower.","The engine roared.","The bird sang.","Emma laughed loudly.","The team won.","The rain fell."];
+    const compound=["The car stopped, and the driver got out.","She likes science, but she loves art more.","Grayson built a tower, and it didn't fall.","The engine roared, but the car stayed still.","The bird sang, and everyone smiled.","Emma laughed loudly, but she covered her mouth.","The team won, and the crowd cheered.","The rain fell, but we stayed dry."];
     const isSimple=Math.random()<0.5; const text=isSimple?pick(simple):pick(compound);
     const correct=isSimple?"Simple sentence":"Compound sentence";
     const {options,correctIndex}=makeMCQ(correct,["Simple sentence","Compound sentence"]);
     return {q:`${introSentence("Simple sentence","Compound sentence")}Is this a simple or compound sentence? "${text}"`, options, correctIndex,
       explain:`It's a ${correct.toLowerCase()}${withDef(correct)} — ${isSimple?"one idea":"two ideas joined by a conjunction"}.`}; },
-  () => { const sentences=["When the bell rang, everyone stopped.","Because he was curious, Grayson opened the box.","While the rocket launched, the crowd cheered.","Although it was raining, we went outside."];
+  () => { const sentences=["When the bell rang, everyone stopped.","Because he was curious, Grayson opened the box.","While the rocket launched, the crowd cheered.","Although it was raining, we went outside.","Since the storm passed, we played outside.","Before the sun set, we packed up camp.","If it snows tomorrow, school will close.","After the alarm sounded, everyone left.","Unless we hurry, we'll miss the train.","Whenever it thunders, the dog hides.","As the sun rose, the birds began to sing.","Once the game finished, we went home."];
     const text=pick(sentences); const correct="Subordinate clause";
     const {options,correctIndex}=makeMCQ(correct,["Subordinate clause","Main clause"]);
     return {q:`${introSentence("Subordinate clause")}In "${text}", what type of clause comes first?`, options, correctIndex,
       explain:`It starts with a subordinate clause${withDef(correct)}.`}; },
-  () => { const sentences=["Although it was raining, we went outside.","When the bell rang, everyone stopped.","Because he was curious, Grayson opened the box.","While the rocket launched, the crowd cheered."];
+  () => { const sentences=["Although it was raining, we went outside.","When the bell rang, everyone stopped.","Because he was curious, Grayson opened the box.","While the rocket launched, the crowd cheered.","Since the storm passed, we played outside.","Before the sun set, we packed up camp.","If it snows tomorrow, school will close.","After the alarm sounded, everyone left.","Unless we hurry, we'll miss the train.","Whenever it thunders, the dog hides.","As the sun rose, the birds began to sing.","Once the game finished, we went home."];
     const text=pick(sentences); const correct="Subordinate clause";
     const {options,correctIndex}=makeMCQ(correct,["Subordinate clause","Main clause","Compound sentence"]);
     return {q:`${introSentence("Subordinate clause")}In "${text}", what type of clause comes first?`, options, correctIndex,
       explain:`It starts with a subordinate clause${withDef(correct)}.`}; },
-  () => { const pairs=[["The rocket launched.","Everyone cheered."],["The dog barked.","The cat ran away."],["Grayson finished the model.","He showed his dad."],["The rain stopped.","We went outside to play."]];
+  () => { const pairs=[["The rocket launched.","Everyone cheered."],["The dog barked.","The cat ran away."],["Grayson finished the model.","He showed his dad."],["The rain stopped.","We went outside to play."],["The bell rang.","Class began."],["The sun rose.","The birds started singing."],["The team scored.","The fans went wild."],["The storm passed.","The sky turned blue."],["The music started.","Everyone began to dance."],["The train arrived.","The passengers got on."],["The lights went out.","Everyone gasped."],["The whistle blew.","The race began."]];
     const [a,b]=pick(pairs);
     const correct=`${a.slice(0,-1)}, and ${b.toLowerCase()}`;
     const wrongs=[`${a} ${b}`,`${a.slice(0,-1)} but ${b.toLowerCase()}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`${introSentence("Compound sentence")}Which correctly joins these into one compound sentence? "${a}" + "${b}"`, options, correctIndex,
       explain:`Join with a comma and "and": "${correct}"`}; },
-  () => { const pairs=[["The rocket launched.","Everyone cheered."],["The dog barked.","The cat ran away."],["Grayson finished the model.","He showed his dad."],["The rain stopped.","We went outside to play."]];
+  () => { const pairs=[["The rocket launched.","Everyone cheered."],["The dog barked.","The cat ran away."],["Grayson finished the model.","He showed his dad."],["The rain stopped.","We went outside to play."],["The bell rang.","Class began."],["The sun rose.","The birds started singing."],["The team scored.","The fans went wild."],["The storm passed.","The sky turned blue."],["The music started.","Everyone began to dance."],["The train arrived.","The passengers got on."],["The lights went out.","Everyone gasped."],["The whistle blew.","The race began."]];
     const [a,b]=pick(pairs);
     const correct=`${a.slice(0,-1)}, and ${b.toLowerCase()}`;
     const wrongs=[`${a} ${b}`,`${a.slice(0,-1)} but ${b.toLowerCase()}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`${introSentence("Compound sentence")}Which correctly joins these into one compound sentence? "${a}" + "${b}"`, options, correctIndex,
       explain:`Join with a comma and "and": "${correct}"`}; },
-  () => { const pairs=[["Because it was raining","we stayed inside."],["Although he was tired","Grayson kept building."],["When the alarm rang","everyone rushed outside."]];
+  () => { const pairs=[["Because it was raining","we stayed inside."],["Although he was tired","Grayson kept building."],["When the alarm rang","everyone rushed outside."],["Since the shop was closed","we went home."],["While the rain fell","we watched a film."],["If the bus is late","we will walk instead."],["Before the game started","the team warmed up."],["After the bell rang","the students lined up."],["Unless we leave now","we'll be late."],["Whenever it snows","the park closes early."],["As the tide came in","the children ran up the beach."],["Once the cake cooled","we added the icing."]];
     const [sub,main]=pick(pairs); const correct=sub;
     const wrongs=[main.replace(/\.$/,""), `${sub} ${main}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
@@ -756,58 +777,60 @@ G.english.sentence_structure = [
 
 // ---- ENGLISH: Punctuation ----
 G.english.punctuation = [
-  () => { const pairs=[["the dog ran","The dog ran."],["grayson jumped","Grayson jumped."],["the cat slept","The cat slept."],["emma smiled","Emma smiled."]];
+  () => { const pairs=[["the dog ran","The dog ran."],["grayson jumped","Grayson jumped."],["the cat slept","The cat slept."],["emma smiled","Emma smiled."],["the bird sang","The bird sang."],["oliver waved","Oliver waved."],["the car stopped","The car stopped."],["mia laughed","Mia laughed."],["noah shouted","Noah shouted."],["the baby cried","The baby cried."],["ava skipped","Ava skipped."],["the horse galloped","The horse galloped."]];
     const [text,correct]=pick(pairs);
     const wrongs=[text+".", correct.slice(0,-1)];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which is correctly punctuated? (original: "${text}")`, options, correctIndex,
       explain:`Sentences start with a capital letter and end with a full stop: "${correct}"`}; },
-  () => { const pairs=[["the dog ran fast","The dog ran fast."],["grayson built a rocket","Grayson built a rocket."],["the car stopped suddenly","The car stopped suddenly."],["she loves science","She loves science."]];
+  () => { const pairs=[["the dog ran fast","The dog ran fast."],["grayson built a rocket","Grayson built a rocket."],["the car stopped suddenly","The car stopped suddenly."],["she loves science","She loves science."],["the team won the match","The team won the match."],["oliver painted a picture","Oliver painted a picture."],["the storm passed quickly","The storm passed quickly."],["mia read the whole book","Mia read the whole book."],["noah scored a goal","Noah scored a goal."],["the plane landed safely","The plane landed safely."],["ava solved the puzzle","Ava solved the puzzle."],["the volcano erupted loudly","The volcano erupted loudly."]];
     const [text,correct]=pick(pairs);
     const wrongs=[text+".", correct.slice(0,-1), text.charAt(0).toUpperCase()+text.slice(1)];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which is correctly punctuated? (original: "${text}")`, options, correctIndex,
       explain:`Sentences start with a capital letter and end with a full stop: "${correct}"`}; },
-  () => { const lists=[["apples","pears","bananas"],["cars","trucks","trains"],["red","blue","green"],["rockets","planets","stars"]];
+  () => { const lists=[["apples","pears","bananas"],["cars","trucks","trains"],["red","blue","green"],["rockets","planets","stars"],["pens","pencils","rulers"],["cats","dogs","rabbits"],["shirts","socks","shoes"],["drums","guitars","pianos"],["kites","balloons","frisbees"],["carrots","peas","potatoes"],["hats","scarves","gloves"],["books","magazines","comics"]];
     const items=pick(lists);
     const correct=`I bought ${items[0]}, ${items[1]} and ${items[2]}.`;
     const wrongs=[`I bought ${items[0]} ${items[1]} and ${items[2]}.`,`I bought ${items[0]} ${items[1]}, and ${items[2]}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q:`Which sentence uses commas correctly in a list?`, options, correctIndex,
+    return {q:`Which sentence uses commas correctly to list "${items[0]}, ${items[1]}, ${items[2]}"?`, options, correctIndex,
       explain:`Commas separate list items: "${correct}"`}; },
-  () => { const lists=[["apples","pears","bananas"],["cars","trucks","trains"],["red","blue","green"],["rockets","planets","stars"]];
+  () => { const lists=[["apples","pears","bananas"],["cars","trucks","trains"],["red","blue","green"],["rockets","planets","stars"],["pens","pencils","rulers"],["cats","dogs","rabbits"],["shirts","socks","shoes"],["drums","guitars","pianos"],["kites","balloons","frisbees"],["carrots","peas","potatoes"],["hats","scarves","gloves"],["books","magazines","comics"]];
     const items=pick(lists);
     const correct=`I bought ${items[0]}, ${items[1]} and ${items[2]}.`;
     const wrongs=[`I bought ${items[0]} ${items[1]} and ${items[2]}.`,`I bought ${items[0]}, ${items[1]}, and, ${items[2]}.`,`I bought ${items[0]} ${items[1]}, and ${items[2]}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q:`Which sentence uses commas correctly in a list?`, options, correctIndex,
+    return {q:`Which sentence uses commas correctly to list "${items[0]}, ${items[1]}, ${items[2]}"?`, options, correctIndex,
       explain:`Commas separate list items: "${correct}"`}; },
-  () => { const names=["Grayson","Emma","Oliver","Mia"]; const name=pick(names);
+  () => { const names=["Grayson","Emma","Oliver","Mia","Noah","Ava","Leo","Zara","Isla","Finn","Ruby","Max"]; const name=pick(names);
     const correct=`${name}'s car`; const wrongs=[`${name}s' car`,`${name}s car`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which correctly shows the car belongs to ${name}?`, options, correctIndex, explain:`Correct form: "${correct}".`}; },
-  () => { const names=["Grayson","Emma","the dog"]; const name=pick(names);
+  () => { const names=["Grayson","Emma","the dog","Oliver","Mia","the cat","Noah","the teacher"]; const name=pick(names);
+    const contractions=[["do not","don't"],["is not","isn't"],["cannot","can't"],["did not","didn't"],["will not","won't"],["have not","haven't"]];
     const isPossessive=Math.random()<0.5;
-    const correct = isPossessive ? `${name}'s car` : "don't";
-    const wrongs = isPossessive ? [`${name}s' car`,`${name}s car`] : ["dont","do'nt"];
+    const [phrase,contracted]=pick(contractions);
+    const correct = isPossessive ? `${name}'s car` : contracted;
+    const wrongs = isPossessive ? [`${name}s' car`,`${name}s car`] : [phrase.replace(" ",""), contracted.replace("'","")];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q: isPossessive ? `Which correctly shows the car belongs to ${name}?` : `Which correctly contracts "do not"?`,
+    return {q: isPossessive ? `Which correctly shows the car belongs to ${name}?` : `Which correctly contracts "${phrase}"?`,
       options, correctIndex, explain:`Correct form: "${correct}".`}; },
-  () => { const lines=[["I found it!","Grayson"],["Look at that!","Emma"],["We won!","the team"],["It's alive!","the scientist"]];
+  () => { const lines=[["I found it!","Grayson"],["Look at that!","Emma"],["We won!","the team"],["It's alive!","the scientist"],["Watch out!","Oliver"],["That's amazing!","Mia"],["Let's go!","the coach"],["I did it!","Noah"],["Look out below!","the builder"],["We made it!","Ava"],["Incredible!","the pilot"],["Over here!","Leo"]];
     const [line,speaker]=pick(lines);
     const correct=`"${line}" said ${speaker}.`;
     const wrongs=[`${line} said ${speaker}.`,`"${line} said ${speaker}."`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q:`Which correctly punctuates the direct speech?`, options, correctIndex,
+    return {q:`Which correctly punctuates ${speaker} saying "${line}"?`, options, correctIndex,
       explain:`Speech marks wrap exactly what's said, punctuation goes inside: ${correct}`}; },
-  () => { const lines=[["I found it!","Grayson"],["Look at that!","Emma"],["We won!","the team"],["It's alive!","the scientist"]];
+  () => { const lines=[["I found it!","Grayson"],["Look at that!","Emma"],["We won!","the team"],["It's alive!","the scientist"],["Watch out!","Oliver"],["That's amazing!","Mia"],["Let's go!","the coach"],["I did it!","Noah"],["Look out below!","the builder"],["We made it!","Ava"],["Incredible!","the pilot"],["Over here!","Leo"]];
     const [line,speaker]=pick(lines);
     const correct=`"${line}" said ${speaker}.`;
     const wrongs=[`${line} said ${speaker}.`,`"${line} said ${speaker}."`,`"${line.slice(0,-1)}"! said ${speaker}.`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q:`Which correctly punctuates the direct speech?`, options, correctIndex,
+    return {q:`Which correctly punctuates ${speaker} saying "${line}"?`, options, correctIndex,
       explain:`Speech marks wrap exactly what's said, punctuation goes inside: ${correct}`}; },
-  () => { const pairs=[["Why did the rocket launch","Why did the rocket launch?"],["What is your name","What is your name?"],["Where do you live","Where do you live?"]];
+  () => { const pairs=[["Why did the rocket launch","Why did the rocket launch?"],["What is your name","What is your name?"],["Where do you live","Where do you live?"],["How old are you","How old are you?"],["When does the film start","When does the film start?"],["Who won the race","Who won the race?"],["Why is the sky blue","Why is the sky blue?"],["What time is it","What time is it?"],["How does this work","How does this work?"],["Which team won","Which team won?"],["Where did you find that","Where did you find that?"],["Why is the dog barking","Why is the dog barking?"]];
     const [text,correct]=pick(pairs);
     const wrongs=[text+".", text+"!"];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
@@ -817,90 +840,90 @@ G.english.punctuation = [
 
 // ---- ENGLISH: Verb Tenses ----
 G.english.tenses = [
-  () => { const pairs=[["walk","walked"],["jump","jumped"],["play","played"],["look","looked"]];
+  () => { const pairs=[["walk","walked"],["jump","jumped"],["play","played"],["look","looked"],["help","helped"],["climb","climbed"],["clean","cleaned"],["cook","cooked"],["dance","danced"],["pack","packed"],["paint","painted"],["wash","washed"],["laugh","laughed"],["talk","talked"]];
     const [present,past]=pick(pairs); const correct=past;
     const {options,correctIndex}=makeMCQ(correct,[present, edForm(present)]);
     return {q:`${introSentence("Past tense")}What is the past tense of "${present}"?`, options, correctIndex,
       explain:`"${present}" → "${correct}" (past tense = something that already happened).`}; },
-  () => { const pairs=[["walk","walked"],["jump","jumped"],["build","built"],["run","ran"],["go","went"],["paint","painted"],["explore","explored"]];
+  () => { const pairs=[["walk","walked"],["jump","jumped"],["build","built"],["run","ran"],["go","went"],["paint","painted"],["explore","explored"],["see","saw"],["come","came"],["give","gave"],["take","took"],["eat","ate"],["write","wrote"],["speak","spoke"]];
     const [present,past]=pick(pairs); const correct=past;
     const {options,correctIndex}=makeMCQ(correct,[present, edForm(present), past+"ed"]);
     return {q:`${introSentence("Past tense")}What is the past tense of "${present}"?`, options, correctIndex,
       explain:`"${present}" → "${correct}" (past tense = something that already happened).`}; },
-  () => { const verbs=["build","paint","jump","race"]; const v=pick(verbs); const correct=ingForm(v);
+  () => { const verbs=["build","paint","jump","race","walk","cook","clean","help","pack","dance","climb","wave","smile","skip"]; const v=pick(verbs); const correct=ingForm(v);
     const {options,correctIndex}=makeMCQ(correct,[v, edForm(v)]);
     return {q:`${introSentence("Progressive tense")}Which shows the action happening right now for "${v}"? "Grayson is ___ a tower."`,
       options, correctIndex, explain:`Progressive tense uses "is/are + verb-ing": "${correct}"${withDef("Progressive tense")}.`}; },
-  () => { const verbs=["build","design","paint","explore","race"]; const v=pick(verbs); const correct=ingForm(v);
+  () => { const verbs=["build","design","paint","explore","race","launch","climb","create","write","dance","invent","discover","celebrate","imagine"]; const v=pick(verbs); const correct=ingForm(v);
     const {options,correctIndex}=makeMCQ(correct,[v, edForm(v), v+"s"]);
     return {q:`${introSentence("Progressive tense")}Which shows the action happening right now for "${v}"? "Grayson is ___ a tower."`,
       options, correctIndex, explain:`Progressive tense uses "is/are + verb-ing": "${correct}"${withDef("Progressive tense")}.`}; },
-  () => { const verbs=["build","paint","explore","launch"]; const v=pick(verbs); const correct=`will ${v}`;
+  () => { const verbs=["build","paint","explore","launch","climb","create","design","race","clean","pack","invent","discover","celebrate","imagine"]; const v=pick(verbs); const correct=`will ${v}`;
     const {options,correctIndex}=makeMCQ(correct,[edForm(v),v]);
     return {q:`${introSentence("Future tense")}Which shows the future tense for "${v}"? "Tomorrow, Grayson ___ a rocket."`, options, correctIndex,
       explain:`Future tense: "will + verb": "${correct}"${withDef("Future tense")}.`}; },
-  () => { const verbs=["explore","build","paint","launch","design"]; const v=pick(verbs); const correct=`will ${v}`;
+  () => { const verbs=["explore","build","paint","launch","design","create","climb","race","write","draw","invent","discover","celebrate","imagine"]; const v=pick(verbs); const correct=`will ${v}`;
     const {options,correctIndex}=makeMCQ(correct,[edForm(v),`is ${ingForm(v)}`,v]);
     return {q:`${introSentence("Future tense")}Which shows the future tense for "${v}"? "Tomorrow, Grayson ___ a rocket."`, options, correctIndex,
       explain:`Future tense: "will + verb": "${correct}"${withDef("Future tense")}.`}; },
-  () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"]]; const [present,past]=pick(pairs);
+  () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"],["go","gone"],["write","written"],["give","given"],["explore","explored"],["climb","climbed"],["clean","cleaned"],["take","taken"],["eat","eaten"],["do","done"],["speak","spoken"],["break","broken"]]; const [present,past]=pick(pairs);
     const correct=`has ${past}`;
     const {options,correctIndex}=makeMCQ(correct,[`have ${present}`,past]);
-    return {q:`${introSentence("Present perfect tense")}Which shows the present perfect tense? "Grayson ___ the whole model."`, options, correctIndex,
+    return {q:`${introSentence("Present perfect tense")}Which shows the present perfect tense for "${present}"? "Grayson ___ the whole model."`, options, correctIndex,
       explain:`Present perfect: "has/have + past participle": "${correct}"${withDef("Present perfect tense")}.`}; },
-  () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"],["explore","explored"]]; const [present,past]=pick(pairs);
+  () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"],["explore","explored"],["go","gone"],["write","written"],["give","given"],["take","taken"],["eat","eaten"],["do","done"],["climb","climbed"],["speak","spoken"],["break","broken"],["sing","sung"]]; const [present,past]=pick(pairs);
     const correct=`has ${past}`;
     const {options,correctIndex}=makeMCQ(correct,[`have ${present}`,`is ${ingForm(present)}`,past]);
-    return {q:`${introSentence("Present perfect tense")}Which shows the present perfect tense? "Grayson ___ the whole model."`, options, correctIndex,
+    return {q:`${introSentence("Present perfect tense")}Which shows the present perfect tense for "${present}"? "Grayson ___ the whole model."`, options, correctIndex,
       explain:`Present perfect: "has/have + past participle": "${correct}"${withDef("Present perfect tense")}.`}; },
-  () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"]]; const [present,past]=pick(pairs);
+  () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"],["go","gone"],["write","written"],["give","given"],["take","taken"],["eat","eaten"],["do","done"],["explore","explored"],["climb","climbed"],["speak","spoken"],["break","broken"],["sing","sung"]]; const [present,past]=pick(pairs);
     const correct=`had ${past}`;
     const {options,correctIndex}=makeMCQ(correct,[`has ${past}`,`is ${ingForm(present)}`,past]);
-    return {q:`${introSentence("Past perfect tense")}Which shows the past perfect tense? "By the time we arrived, Grayson ___ the whole model."`, options, correctIndex,
+    return {q:`${introSentence("Past perfect tense")}Which shows the past perfect tense for "${present}"? "By the time we arrived, Grayson ___ the whole model."`, options, correctIndex,
       explain:`Past perfect: "had + past participle" (used for something that happened before another past event): "${correct}"${withDef("Past perfect tense")}.`}; },
 ];
 
 // ---- ENGLISH: Vocabulary & Spelling ----
 G.english.vocabulary = [
-  () => { const pairs=[["happy","joyful"],["big","enormous"],["cold","icy"],["little","tiny"]];
+  () => { const pairs=[["happy","joyful"],["big","enormous"],["cold","icy"],["little","tiny"],["fast","quick"],["loud","noisy"],["scared","frightened"],["pretty","lovely"],["clean","spotless"],["dirty","filthy"],["quiet","silent"],["strong","powerful"]];
     const [word,syn]=pick(pairs); const correct=syn;
-    const {options,correctIndex}=makeMCQ(correct,["sad","small","hot"]);
+    const {options,correctIndex}=makeMCQ(correct,["sad","small","hot","slow"]);
     return {q:`Which word means the same as "${word}"?`, options, correctIndex, explain:`"${syn}" is a synonym for "${word}".`}; },
-  () => { const pairs=[["happy","joyful"],["big","enormous"],["fast","quick"],["smart","clever"]];
+  () => { const pairs=[["happy","joyful"],["big","enormous"],["fast","quick"],["smart","clever"],["angry","furious"],["tired","exhausted"],["funny","hilarious"],["messy","chaotic"],["brave","courageous"],["quiet","peaceful"],["strange","bizarre"],["important","essential"]];
     const [word,syn]=pick(pairs); const correct=syn;
-    const {options,correctIndex}=makeMCQ(correct,["sad","small","slow"]);
+    const {options,correctIndex}=makeMCQ(correct,["sad","small","slow","calm"]);
     return {q:`Which word means the same as "${word}"?`, options, correctIndex, explain:`"${syn}" is a synonym for "${word}".`}; },
-  () => { const pairs=[["hot","cold"],["fast","slow"],["up","down"],["day","night"]];
+  () => { const pairs=[["hot","cold"],["fast","slow"],["up","down"],["day","night"],["big","small"],["loud","quiet"],["happy","sad"],["light","dark"],["wet","dry"],["full","empty"],["open","closed"],["early","late"]];
     const [word,ant]=pick(pairs); const correct=ant;
-    const {options,correctIndex}=makeMCQ(correct,["huge","quick","warm"]);
+    const {options,correctIndex}=makeMCQ(correct,["huge","quick","warm","bright"]);
     return {q:`Which word means the opposite of "${word}"?`, options, correctIndex, explain:`"${ant}" is an antonym for "${word}".`}; },
-  () => { const pairs=[["hot","cold"],["fast","slow"],["big","small"],["happy","sad"]];
+  () => { const pairs=[["hot","cold"],["fast","slow"],["big","small"],["happy","sad"],["brave","cowardly"],["ancient","modern"],["generous","stingy"],["cautious","reckless"],["polite","rude"],["patient","impatient"],["honest","dishonest"],["gentle","harsh"]];
     const [word,ant]=pick(pairs); const correct=ant;
-    const {options,correctIndex}=makeMCQ(correct,["huge","quick","joyful"]);
+    const {options,correctIndex}=makeMCQ(correct,["huge","quick","joyful","calm"]);
     return {q:`Which word means the opposite of "${word}"?`, options, correctIndex, explain:`"${ant}" is an antonym for "${word}".`}; },
-  () => { const roots=[["un","happy","not happy"],["un","kind","not kind"],["un","fair","not fair"],["un","well","not well"]];
+  () => { const roots=[["un","happy","not happy"],["un","kind","not kind"],["un","fair","not fair"],["un","well","not well"],["un","tidy","not tidy"],["un","safe","not safe"],["un","lucky","not lucky"],["un","common","not common"],["un","able","not able"],["un","true","not true"],["un","sure","not sure"],["un","equal","not equal"]];
     const [prefix,root,meaning]=pick(roots); const correct=`${prefix}${root}`;
     const {options,correctIndex}=makeMCQ(correct,[root, `${root}ing`]);
     return {q:`Add a prefix to "${root}" to mean "${meaning}".`, options, correctIndex,
       explain:`"${prefix}" + "${root}" = "${correct}" (${meaning}).`}; },
-  () => { const roots=[["un","happy","not happy"],["re","build","build again"],["dis","like","not like"]];
+  () => { const roots=[["un","happy","not happy"],["re","build","build again"],["dis","like","not like"],["re","play","play again"],["dis","agree","not agree"],["un","lock","not locked"],["re","use","use again"],["dis","appear","not appear"],["re","write","write again"],["dis","connect","not connect"],["un","wrap","not wrapped"],["re","read","read again"]];
     const otherPrefixes=["un","re","dis"];
     const [prefix,root,meaning]=pick(roots); const correct=`${prefix}${root}`;
     const wrongPrefixes = otherPrefixes.filter(p=>p!==prefix).map(p=>`${p}${root}`);
     const {options,correctIndex}=makeMCQ(correct,[...wrongPrefixes, root]);
     return {q:`Add a prefix to "${root}" to mean "${meaning}".`, options, correctIndex,
       explain:`"${prefix}" + "${root}" = "${correct}" (${meaning}).`}; },
-  () => { const pairs=[["to","too"],["hear","here"],["one","won"],["sun","son"]];
+  () => { const pairs=[["to","too"],["hear","here"],["one","won"],["sun","son"],["be","bee"],["eye","I"],["flower","flour"],["sea","see"]];
     const [a,b]=pick(pairs); const useA=Math.random()<0.5; const word=useA?a:b;
     const {options,correctIndex}=makeMCQ(`${a} / ${b}`,[`${a} / ${a}`]);
     return {q:`"${word}" has a homophone (sounds the same, different spelling & meaning). Which pair is correct?`,
       options, correctIndex, explain:`"${a}" and "${b}" are homophones.`}; },
-  () => { const pairs=[["their","there"],["to","too"],["hear","here"],["write","right"]];
+  () => { const pairs=[["their","there"],["to","too"],["hear","here"],["write","right"],["knight","night"],["whole","hole"],["break","brake"],["meat","meet"]];
     const [a,b]=pick(pairs); const useA=Math.random()<0.5; const word=useA?a:b;
     const {options,correctIndex}=makeMCQ(`${a} / ${b}`,[`${a} / ${a}`,`${b} / ${b}`]);
     return {q:`"${word}" has a homophone (sounds the same, different spelling & meaning). Which pair is correct?`,
       options, correctIndex, explain:`"${a}" and "${b}" are homophones.`}; },
-  () => { const roots=[["care","ful","full of care"],["care","less","without care"],["help","ful","full of help"],["help","less","without help"]];
+  () => { const roots=[["care","ful","full of care"],["care","less","without care"],["help","ful","full of help"],["help","less","without help"],["hope","ful","full of hope"],["hope","less","without hope"],["thought","ful","full of thought"],["thought","less","without thought"],["harm","ful","full of harm"],["harm","less","without harm"],["colour","ful","full of colour"],["use","less","without use"]];
     const [root,suffix,meaning]=pick(roots); const correct=`${root}${suffix}`;
     const wrongSuffix = suffix==="ful"?"less":"ful";
     const {options,correctIndex}=makeMCQ(correct,[`${root}${wrongSuffix}`, root]);
@@ -910,55 +933,65 @@ G.english.vocabulary = [
 
 // ---- ENGLISH: Composition & Style ----
 G.english.composition = [
-  () => { const plain=["big","good","said","nice"]; const better={big:"enormous",good:"magnificent",said:"exclaimed",nice:"delightful"};
-    const word=pick(plain); const correct=better[word];
+  () => { const better={big:"enormous",good:"magnificent",said:"exclaimed",nice:"delightful",sad:"miserable",cold:"freezing",tired:"exhausted",scared:"terrified",fast:"lightning-quick",small:"tiny",loud:"deafening",dirty:"filthy"};
+    const plain=Object.keys(better); const word=pick(plain); const correct=better[word];
     const {options,correctIndex}=makeMCQ(correct,["ok","fine"]);
     return {q:`Which is the more powerful, descriptive word to replace "${word}"?`, options, correctIndex,
       explain:`"${correct}" is more vivid and precise than "${word}".`}; },
-  () => { const plain=["big","good","said","nice"]; const better={big:"enormous",good:"magnificent",said:"exclaimed",nice:"delightful"};
-    const word=pick(plain); const correct=better[word];
+  () => { const better={big:"enormous",good:"magnificent",said:"exclaimed",nice:"delightful",sad:"miserable",cold:"freezing",tired:"exhausted",scared:"terrified",fast:"lightning-quick",small:"tiny",loud:"deafening",dirty:"filthy"};
+    const plain=Object.keys(better); const word=pick(plain); const correct=better[word];
     const {options,correctIndex}=makeMCQ(correct,["ok","fine","stuff"]);
     return {q:`Which is the more powerful, descriptive word to replace "${word}"?`, options, correctIndex,
       explain:`"${correct}" is more vivid and precise than "${word}".`}; },
-  () => { const pairs=[["Suddenly, the engine roared to life.","The car started."],["Deep in the workshop, gears began to turn.","There was a car in the workshop."],["With a deafening blast, the rocket tore into the sky.","The rocket went up."],["Under a sky full of stars, the scientists waited.","It was nighttime and the scientists waited."]];
+  () => { const pairs=[["Suddenly, the engine roared to life.","The car started."],["Deep in the workshop, gears began to turn.","There was a car in the workshop."],["With a deafening blast, the rocket tore into the sky.","The rocket went up."],["Under a sky full of stars, the scientists waited.","It was nighttime and the scientists waited."],["Without warning, the ground began to shake.","There was an earthquake."],["High above the clouds, the plane soared onward.","The plane flew."],["In the blink of an eye, the trick was done.","The magician did a trick."],["Deep beneath the waves, the submarine glided silently.","The submarine moved underwater."],["Out of nowhere, a bolt of lightning split the sky.","There was a storm."],["Across the silent field, a fox crept forward.","A fox walked in the field."],["With a final creak, the old door swung open.","The door opened."],["In a flash of colour, the fireworks lit the night.","The fireworks went off."]];
     const [correct,weak]=pick(pairs);
     const {options,correctIndex}=makeMCQ(correct,[weak]);
-    return {q:`Which is the more engaging sentence opener?`, options, correctIndex,
+    return {q:`Which is the more engaging sentence opener — instead of "${weak}"?`, options, correctIndex,
       explain:`"${correct}" hooks the reader with vivid detail or action.`}; },
-  () => { const pairs=[["Suddenly, the engine roared to life.","The car started."],["Deep in the workshop, gears began to turn.","There was a car in the workshop."],["With a deafening blast, the rocket tore into the sky.","The rocket went up."],["Under a sky full of stars, the scientists waited.","It was nighttime and the scientists waited."]];
+  () => { const pairs=[["Suddenly, the engine roared to life.","The car started."],["Deep in the workshop, gears began to turn.","There was a car in the workshop."],["With a deafening blast, the rocket tore into the sky.","The rocket went up."],["Under a sky full of stars, the scientists waited.","It was nighttime and the scientists waited."],["Without warning, the ground began to shake.","There was an earthquake."],["High above the clouds, the plane soared onward.","The plane flew."],["In the blink of an eye, the trick was done.","The magician did a trick."],["Deep beneath the waves, the submarine glided silently.","The submarine moved underwater."],["Out of nowhere, a bolt of lightning split the sky.","There was a storm."],["Across the silent field, a fox crept forward.","A fox walked in the field."],["With a final creak, the old door swung open.","The door opened."],["In a flash of colour, the fireworks lit the night.","The fireworks went off."]];
     const [correct,weak]=pick(pairs);
-    const otherWeak=pick(["The car started.","There was a car in the workshop.","The rocket went up.","It was nighttime and the scientists waited."].filter(w=>w!==weak));
+    const otherWeak=pick(pairs.map(p=>p[1]).filter(w=>w!==weak));
     const {options,correctIndex}=makeMCQ(correct,[weak,otherWeak]);
-    return {q:`Which is the more engaging sentence opener?`, options, correctIndex,
+    return {q:`Which is the more engaging sentence opener — instead of "${weak}"?`, options, correctIndex,
       explain:`"${correct}" hooks the reader with vivid detail or action.`}; },
-  () => { const pairs=[["The rain poured down.","We stayed inside and read books."],["Grayson studied hard.","He passed the test."],["The engine overheated.","The car stopped."],["The alarm went off.","Everyone left the building."]];
+  () => { const pairs=[["The rain poured down.","We stayed inside and read books."],["Grayson studied hard.","He passed the test."],["The engine overheated.","The car stopped."],["The alarm went off.","Everyone left the building."],["The wind picked up.","The kites flew higher."],["The battery died.","The torch went dark."],["The bread went stale.","We threw it away."],["The ice melted.","The path became slippery."],["The fog rolled in.","The flight was delayed."],["The crowd cheered loudly.","The players felt proud."],["The volcano erupted.","The village was evacuated."],["The power went out.","We lit some candles."]];
     const [a,b]=pick(pairs);
     const correct=`Because ${a.slice(0,-1).toLowerCase()}, ${b.toLowerCase()}`;
     const wrongs=[`${a} ${b}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which best combines these two ideas showing cause and effect? "${a}" + "${b}"`, options, correctIndex,
       explain:`"${correct}" clearly links cause and effect with "Because".`}; },
-  () => { const pairs=[["The rain poured down.","We stayed inside and read books."],["Grayson studied hard.","He passed the test."],["The engine overheated.","The car stopped."],["The alarm went off.","Everyone left the building."]];
+  () => { const pairs=[["The rain poured down.","We stayed inside and read books."],["Grayson studied hard.","He passed the test."],["The engine overheated.","The car stopped."],["The alarm went off.","Everyone left the building."],["The wind picked up.","The kites flew higher."],["The battery died.","The torch went dark."],["The bread went stale.","We threw it away."],["The ice melted.","The path became slippery."],["The fog rolled in.","The flight was delayed."],["The crowd cheered loudly.","The players felt proud."],["The volcano erupted.","The village was evacuated."],["The power went out.","We lit some candles."]];
     const [a,b]=pick(pairs);
     const correct=`Because ${a.slice(0,-1).toLowerCase()}, ${b.toLowerCase()}`;
     const wrongs=[`${a} ${b}`,`${b} ${a}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which best combines these two ideas showing cause and effect? "${a}" + "${b}"`, options, correctIndex,
       explain:`"${correct}" clearly links cause and effect with "Because".`}; },
-  () => { const pairs=[["car","the rusty, roaring vintage car"],["dog","the small, fluffy brown dog"],["rocket","the shiny, silver rocket"],["castle","the tall, ancient stone castle"]];
+  () => { const pairs=[["car","the rusty, roaring vintage car"],["dog","the small, fluffy brown dog"],["rocket","the shiny, silver rocket"],["castle","the tall, ancient stone castle"],["forest","the dark, whispering pine forest"],["river","the wide, glistening blue river"],["kitten","the tiny, curious ginger kitten"],["mountain","the towering, snow-capped mountain"],["house","the crooked, abandoned old house"],["garden","the colourful, blooming spring garden"],["beach","the golden, sun-drenched sandy beach"],["bridge","the long, creaking wooden bridge"]];
     const [plainNoun,expanded]=pick(pairs);
     const {options,correctIndex}=makeMCQ(expanded,[`the ${plainNoun}`]);
     return {q:`Which is the best expanded noun phrase for "${plainNoun}"?`, options, correctIndex,
       explain:`"${expanded}" adds vivid, specific detail.`}; },
-  () => { const pairs=[["car","the rusty, roaring vintage car"],["dog","the small, fluffy brown dog"],["rocket","the shiny, silver rocket"],["castle","the tall, ancient stone castle"]];
+  () => { const pairs=[["car","the rusty, roaring vintage car"],["dog","the small, fluffy brown dog"],["rocket","the shiny, silver rocket"],["castle","the tall, ancient stone castle"],["forest","the dark, whispering pine forest"],["river","the wide, glistening blue river"],["kitten","the tiny, curious ginger kitten"],["mountain","the towering, snow-capped mountain"],["house","the crooked, abandoned old house"],["garden","the colourful, blooming spring garden"],["beach","the golden, sun-drenched sandy beach"],["bridge","the long, creaking wooden bridge"]];
     const [plainNoun,expanded]=pick(pairs);
-    const otherExpanded=pick(["the rusty, roaring vintage car","the small, fluffy brown dog","the shiny, silver rocket","the tall, ancient stone castle"].filter(e=>e!==expanded));
+    const otherExpanded=pick(pairs.map(p=>p[1]).filter(e=>e!==expanded));
     const {options,correctIndex}=makeMCQ(expanded,[`the ${plainNoun}`,`a ${plainNoun} that is a ${plainNoun}`,otherExpanded]);
     return {q:`Which is the best expanded noun phrase for "${plainNoun}"?`, options, correctIndex,
       explain:`"${expanded}" adds vivid, specific detail.`}; },
   () => { const sets=[
       ["The car was fast.","The car was red.","It won the race.", "The fast, red car won the race."],
       ["The dog was small.","The dog was fluffy.","It slept all day.", "The small, fluffy dog slept all day."],
+      ["The castle was old.","The castle was stone.","It stood on the hill.","The old, stone castle stood on the hill."],
+      ["The rocket was shiny.","The rocket was silver.","It launched at dawn.","The shiny, silver rocket launched at dawn."],
+      ["The kitten was tiny.","The kitten was ginger.","It napped by the fire.","The tiny, ginger kitten napped by the fire."],
+      ["The river was wide.","The river was blue.","It flowed past the village.","The wide, blue river flowed past the village."],
+      ["The forest was dark.","The forest was quiet.","It stretched for miles.","The dark, quiet forest stretched for miles."],
+      ["The mountain was tall.","The mountain was snowy.","It towered over the town.","The tall, snowy mountain towered over the town."],
+      ["The house was old.","The house was crooked.","It stood at the end of the lane.","The old, crooked house stood at the end of the lane."],
+      ["The garden was colourful.","The garden was blooming.","It smelled sweet in spring.","The colourful, blooming garden smelled sweet in spring."],
+      ["The beach was golden.","The beach was sunny.","It stretched for miles.","The golden, sunny beach stretched for miles."],
+      ["The bridge was long.","The bridge was wooden.","It creaked in the wind.","The long, wooden bridge creaked in the wind."],
     ];
     const [a,b,c,correct]=pick(sets);
     const wrongs=[`${a} ${b} ${c}`];
@@ -1162,17 +1195,16 @@ const STORAGE_KEY = "graysons_app_state_v1";
 function defaultTopicState(){
   // Starts at true tier 0 ("Basics") — a topic he hasn't played yet should
   // never look like it's already at "Advanced" before he's answered anything.
-  // recentQuestions: last few question texts asked for this topic, so the
-  // SAME question doesn't resurface round after round (not just within one
-  // round) — see questionForTopic below.
-  // sessionHistory: for Math/English, the last up-to-3 focused 10-question
-  // practice sessions AT THE CURRENT TIER ({correct,total} each) — this is
-  // the "3 rounds of 10, 95% combined" gate. readyForBonus flips true once
-  // that gate is met, unlocking the Level-Up Round. Both reset to [] / false
-  // whenever the tier changes. Unused by History, which keeps its own
-  // simpler per-question leveling (see recordAnswer).
+  // recentQuestions: History-only — last few question texts asked for this
+  // topic, so the same comprehension question doesn't resurface visit after
+  // visit (see buildHistoryRound below).
+  // seenAtTier: Math/English-only — EVERY question text he's already been
+  // shown at this topic's CURRENT tier, growing across repeated attempts
+  // (not capped like recentQuestions). Cleared only when the tier actually
+  // changes, so a retry of a module never repeats a question from an
+  // earlier attempt at the same level — see questionForTopic below.
   return { tier:0, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0,
-    recentQuestions:[], sessionHistory:[], readyForBonus:false };
+    recentQuestions:[], seenAtTier:[] };
 }
 function defaultState(){
   const s = { history:[], updatedAt:0 };
@@ -1203,23 +1235,26 @@ function migrateState(s){
       if(existing.needsReview === undefined) existing.needsReview = false;
       if(existing.roundsSince === undefined) existing.roundsSince = 0;
       if(!Array.isArray(existing.recentQuestions)) existing.recentQuestions = [];
-      if(!Array.isArray(existing.sessionHistory)) existing.sessionHistory = [];
-      if(existing.readyForBonus === undefined) existing.readyForBonus = false;
+      if(!Array.isArray(existing.seenAtTier)) existing.seenAtTier = [];
+      // Older saves (pre-100%-rule) had sessionHistory/readyForBonus fields
+      // for the retired 3-session/95%-aggregate gate — no longer used, drop
+      // them if present rather than carrying dead state forward.
+      delete existing.sessionHistory;
+      delete existing.readyForBonus;
       // Old tier scale was 0-3 (Year2 Basics, Year2 Advanced, Year3, Year4);
       // new scale is 0-8 (Basic/Intermediate/Advanced within each of Year
       // 2/3/4). Map conservatively so nobody's displayed level is overstated:
       // old Year2-Basics/Advanced map to the SAME-MEANING new tier (0, 2).
       // Old "reached Year3"/"reached Year4" map to the BASIC sub-level of
       // that year (3, 6) rather than presuming Intermediate/Advanced, since
-      // the old rule to get there was much easier (2-in-a-row) than the new
-      // one (3 sessions of 10 at ≥95%) — he can re-earn those sub-levels
-      // properly rather than starting artificially "ahead."
+      // the old rule to get there was much easier (2-in-a-row) than the
+      // current one (a full 10-question module at 100%) — he can re-earn
+      // those sub-levels properly rather than starting artificially "ahead."
       if(CURRICULUM[subj].yearForTier && CURRICULUM[subj].yearForTier.length===9 && existing._migratedTierScale!=="v9"){
         const OLD_TO_NEW_TIER = [0,2,3,6];
         existing.tier = OLD_TO_NEW_TIER[Math.min(existing.tier,3)];
         existing._migratedTierScale = "v9";
-        existing.sessionHistory = [];
-        existing.readyForBonus = false;
+        existing.seenAtTier = [];
       }
     }
   }
@@ -1269,27 +1304,30 @@ function bumpRoundCounters(subject, touchedTopicIds){
   }
 }
 
-// Generates one question for a topic at its current tier, retrying if it
-// collides with (a) a question already used elsewhere in THIS round, or
-// (b) one of the last few questions asked for this topic in PREVIOUS rounds
-// (topicState.recentQuestions) — this is what stops the same fill-in-the-
-// blank sentence from resurfacing round after round for the low-variety
-// generators. Small content pools may still occasionally repeat once the
-// fresh options run out (falls back after 20 tries) — that's an inherent
-// content-size limit, not a bug.
-const RECENT_QUESTIONS_MEMORY = 4;
+// Generates one question for a Math/English topic at its current tier,
+// retrying if it collides with (a) a question already used elsewhere in
+// THIS session, or (b) ANY question already seen at this exact tier in a
+// PREVIOUS attempt (topicState.seenAtTier). Unlike the old capped memory,
+// seenAtTier is never trimmed — it only clears when the tier actually
+// changes (see finishTopicSession) — so a retry of a module he didn't ace
+// never repeats a question from an earlier attempt at the same level. A
+// generous retry budget (60) gives thin content pools a fair chance to find
+// something fresh; only once a pool is truly exhausted does it fall back to
+// a repeat (an inherent content-size limit, not a bug — see the content
+// audit for which tiers are thinnest).
 function questionForTopic(subject, topicId, usedTexts){
   const topicState = STATE[subject].topics[topicId];
   const tier = topicState.tier;
   const gens = G[subject][topicId];
-  const recent = new Set(topicState.recentQuestions || []);
+  const seen = new Set(topicState.seenAtTier || []);
   let q, attempts = 0;
   do {
     q = gens[Math.min(tier, gens.length-1)]();
     attempts++;
-  } while((usedTexts.has(q.q) || recent.has(q.q)) && attempts < 20);
+  } while((usedTexts.has(q.q) || seen.has(q.q)) && attempts < 60);
   usedTexts.add(q.q);
-  topicState.recentQuestions = [q.q, ...(topicState.recentQuestions || [])].slice(0, RECENT_QUESTIONS_MEMORY);
+  if(!topicState.seenAtTier) topicState.seenAtTier = [];
+  if(!topicState.seenAtTier.includes(q.q)) topicState.seenAtTier.push(q.q);
   return { topicId, tier, ...q };
 }
 
@@ -1321,6 +1359,7 @@ function buildRound(subject){
 // which is what was causing the same history questions to resurface every
 // round.)
 const HISTORY_TOPICS_PER_ROUND = 3;
+const RECENT_QUESTIONS_MEMORY = 4; // History-only now — see buildHistoryRound below
 function pickHistoryTopicsForRotation(subject, count){
   const topics = CURRICULUM[subject].topics.map(t=>t.id);
   const s = STATE[subject].topics;
@@ -1440,34 +1479,28 @@ function subjectYear(subject){
 
 /* ---------------------------------------------------------------------
    5b. TOPIC-FOCUSED PRACTICE SESSIONS (Math & English)
-   Replaces the old "2-in-a-row" per-question leveling for these two
-   subjects with an explicit, deliberate practice model:
-     1. Grayson picks ONE topic and plays a focused 10-question session
-        at that topic's current tier (Basic/Intermediate/Advanced within
+   Deliberate practice model, one topic at a time:
+     1. Grayson picks ONE topic and plays a focused 10-question module at
+        that topic's current tier (Basic/Intermediate/Advanced within
         Year 2, then Year 3, then Year 4 — 9 tiers total, capped at 8).
-     2. Each session's {correct,total} is kept in a rolling window of the
-        LAST 3 sessions played at that tier (sessionHistory, capped to 3).
-     3. Once 3 sessions exist and the combined accuracy across them is
-        >=95%, the topic is "ready" and unlocks a Level-Up Round.
-     4. The Level-Up Round is another 10 questions at the SAME tier; scoring
-        >=90% (9 or 10 out of 10 — 95% isn't a whole number on 10
-        questions, so this is the practical equivalent) advances the topic
-        to the next tier and resets its session history for the new tier.
-        Falling short doesn't penalize anything — he can keep practicing
-        and try the Level-Up Round again whenever he likes.
+     2. 100% correct (10/10), first time through -> advances immediately
+        to the next tier. No separate assessment round, no averaging
+        across sessions — one clean module at 100% is the bar.
+     3. Anything less than 100% -> tier stays the same and he repeats the
+        SAME module. No penalty, no lockout — he can retry as soon as he
+        likes, and every retry is built from entirely new questions (see
+        seenAtTier in questionForTopic above) so he's never re-shown a
+        question from an earlier attempt at that level.
    History is unaffected — it keeps its own simpler per-question rule
    (recordAnswer above) since its content model (a handful of fixed
    comprehension questions per topic) doesn't fit this structure.
    --------------------------------------------------------------------- */
 const SESSION_LENGTH = 10;
-const SESSIONS_REQUIRED_FOR_BONUS = 3;
-const AGGREGATE_PASS_THRESHOLD = 0.95;   // across the last 3 practice sessions
-const LEVEL_UP_ROUND_THRESHOLD = 0.9;    // 9/10 or 10/10 on the Level-Up Round itself
 
 // Builds one focused 10-question session for a single topic at its current
-// tier. Reuses questionForTopic's per-topic recentQuestions memory (so
-// content doesn't repeat across sessions) plus a within-session usedTexts
-// set (so it never repeats within THIS session either).
+// tier. Reuses questionForTopic's per-topic seenAtTier memory (so nothing
+// repeats across attempts at the same level) plus a within-session
+// usedTexts set (so it never repeats within THIS session either).
 function buildTopicSession(subject, topicId){
   const usedTexts = new Set();
   const out = [];
@@ -1476,43 +1509,28 @@ function buildTopicSession(subject, topicId){
 }
 
 // Called once, at the end of a focused session, with how many of the
-// SESSION_LENGTH questions were correct. Returns what the UI needs to show.
-function finishTopicSession(subject, topicId, correctCount, totalCount, isLevelUpRound){
+// SESSION_LENGTH questions were correct. The rule is simple: 100% (every
+// question right, first time through) advances immediately to the next
+// tier; anything less than 100% means the topic stays at the same tier and
+// he tries the module again — with entirely fresh questions next time,
+// thanks to seenAtTier. No separate assessment round, no rolling average.
+function finishTopicSession(subject, topicId, correctCount, totalCount){
   const t = STATE[subject].topics[topicId];
   const tierBefore = t.tier;
   t.attempts += totalCount;
   t.correct += correctCount;
 
-  if(isLevelUpRound){
-    const passed = (correctCount/totalCount) >= LEVEL_UP_ROUND_THRESHOLD;
-    if(passed){
-      const maxTier = CURRICULUM[subject].yearForTier.length - 1;
-      if(t.tier < maxTier) t.tier++;
-      t.sessionHistory = [];
-      t.readyForBonus = false;
-      t.needsReview = false;
-    }
-    // A miss on the Level-Up Round doesn't reset anything — he can just try
-    // again whenever he's ready; readyForBonus stays true.
-    saveState(STATE);
-    return { tierBefore, tierAfter:t.tier, passed, readyForBonus:t.readyForBonus };
-  }
-
-  // Regular practice session: push into the rolling window, capped to the
-  // last SESSIONS_REQUIRED_FOR_BONUS entries, then check the aggregate.
-  t.sessionHistory = [...t.sessionHistory, {correct:correctCount, total:totalCount}].slice(-SESSIONS_REQUIRED_FOR_BONUS);
-  t.needsReview = correctCount < totalCount;
-  let aggregatePct = null;
-  if(t.sessionHistory.length >= SESSIONS_REQUIRED_FOR_BONUS){
-    const sumCorrect = t.sessionHistory.reduce((a,s)=>a+s.correct,0);
-    const sumTotal = t.sessionHistory.reduce((a,s)=>a+s.total,0);
-    aggregatePct = Math.round((sumCorrect/sumTotal)*100);
-    t.readyForBonus = (sumCorrect/sumTotal) >= AGGREGATE_PASS_THRESHOLD;
+  const passed = correctCount === totalCount;
+  if(passed){
+    const maxTier = CURRICULUM[subject].yearForTier.length - 1;
+    if(t.tier < maxTier) t.tier++;
+    t.seenAtTier = []; // fresh tier, fresh content pool
+    t.needsReview = false;
   } else {
-    t.readyForBonus = false;
+    t.needsReview = true; // same tier — must repeat until 100%
   }
   saveState(STATE);
-  return { tierBefore, tierAfter:t.tier, readyForBonus:t.readyForBonus, sessionsDone:t.sessionHistory.length, aggregatePct };
+  return { tierBefore, tierAfter:t.tier, passed };
 }
 
 /* ---------------------------------------------------------------------
@@ -1607,9 +1625,9 @@ function startRound(subject, focusTopicIds){
 }
 
 // Math/English topic picker: he chooses ONE topic and works through it with
-// a focused 10-question session, rather than a round mixing every topic
-// together. Shows each topic's current level and how close it is to
-// unlocking a Level-Up Round (3 practice sessions at >=95% combined).
+// a focused 10-question module, rather than a round mixing every topic
+// together. Shows each topic's current level and — if his last attempt
+// fell short of 100% — a reminder that a fresh attempt is needed to advance.
 function renderTopicSelect(subject){
   const cfg = CURRICULUM[subject];
   const year = subjectYear(subject);
@@ -1620,26 +1638,18 @@ function renderTopicSelect(subject){
     let progressLine;
     if(atCeiling){
       progressLine = `<div class="explain" style="color:#a855f7; font-weight:600;">🏆 Mastered — Year 4 Advanced!</div>`;
-    } else if(s.readyForBonus){
-      progressLine = `<div class="explain" style="color:#d97706; font-weight:700;">🎯 Ready for the Level-Up Round!</div>`;
-    } else if(s.sessionHistory.length > 0){
-      const sumC = s.sessionHistory.reduce((a,x)=>a+x.correct,0), sumT = s.sessionHistory.reduce((a,x)=>a+x.total,0);
-      const pct = Math.round((sumC/sumT)*100);
-      progressLine = `<div class="explain">Practice sessions: ${s.sessionHistory.length}/${SESSIONS_REQUIRED_FOR_BONUS} · ${pct}% avg (needs 95% across 3 to unlock the next level)</div>`;
+    } else if(s.needsReview){
+      progressLine = `<div class="explain" style="color:#d97706; font-weight:700;">Needs 100% (all 10 correct) to advance — give it another go.</div>`;
     } else {
-      progressLine = `<div class="explain">No practice sessions yet at this level.</div>`;
+      progressLine = `<div class="explain">Get 10/10 to advance to the next level.</div>`;
     }
-    const gapTag = s.needsReview ? ` <span style="color:#d97706; font-weight:700;">· needs practice</span>` : "";
-    const levelUpBtn = (!atCeiling && s.readyForBonus)
-      ? `<button class="bonus-btn" onclick="startTopicSession('${subject}','${t.id}',true)">🎯 Level-Up Round (10 Qs)</button>` : "";
     return `<div class="summary-stat" style="display:block;">
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="topic-name">${t.name}${gapTag}</span>
+        <span class="topic-name">${t.name}</span>
         <span class="tier-badge t${s.tier % 4}">${cfg.tierLabels[s.tier]}</span>
       </div>
       ${progressLine}
-      <button class="next-btn" style="margin-top:8px;" onclick="startTopicSession('${subject}','${t.id}',false)">Practice (10 Qs)</button>
-      ${levelUpBtn}
+      <button class="next-btn" style="margin-top:8px;" onclick="startTopicSession('${subject}','${t.id}')">Practice (10 Qs)</button>
     </div>`;
   }).join("");
   app.innerHTML = `
@@ -1651,15 +1661,14 @@ function renderTopicSelect(subject){
     </div>`;
 }
 
-// Runs one focused 10-question session on a single topic, at its current
-// tier. isLevelUp=true means this IS the assessment round he unlocked by
-// hitting the 95% bar over his last 3 practice sessions — passing it
-// (>=90%) advances the topic to the next level.
-function startTopicSession(subject, topicId, isLevelUp){
+// Runs one focused 10-question module on a single topic, at its current
+// tier. 100% (10/10) advances to the next tier immediately; anything less
+// means trying again — see finishTopicSession/renderTopicSessionSummary.
+function startTopicSession(subject, topicId){
   currentSubject = subject;
   primerAcknowledged = {};
   currentRound = buildTopicSession(subject, topicId);
-  currentRoundMode = isLevelUp ? "levelup" : "practice";
+  currentRoundMode = "practice";
   currentIndex = 0;
   roundResults = [];
   renderQuestion();
@@ -1695,7 +1704,7 @@ function renderQuestion(){
     <div class="card">
       <button class="back-link" onclick="renderHome()">Exit</button>
       <div class="progress-strip">${dots}</div>
-      <span class="qtag${(currentRoundMode==='bonus'||currentRoundMode==='levelup')?' bonus':''}">${currentRoundMode==='bonus'?'Bonus · ':currentRoundMode==='levelup'?'Level-Up · ':''}${topicName} · Q${currentIndex+1} of ${total}</span>
+      <span class="qtag${currentRoundMode==='bonus'?' bonus':''}">${currentRoundMode==='bonus'?'Bonus · ':''}${topicName} · Q${currentIndex+1} of ${total}</span>
       <p class="question">${q.q}</p>
       <div class="options" id="options">
         ${q.options.map((opt,i)=>`<button class="opt" data-i="${i}" onclick="answer(${i})">${opt}</button>`).join("")}
@@ -1815,52 +1824,38 @@ function renderTopicSessionSummary(){
   const topicId = currentRound[0].topicId;
   const cfg = CURRICULUM[subject];
   const topicName = cfg.topics.find(t=>t.id===topicId).name;
-  const isLevelUp = currentRoundMode === "levelup";
   const correctCount = roundResults.filter(r=>r.correct).length;
   const total = roundResults.length;
   const pct = Math.round((correctCount/total)*100);
-  const emoji = pct >= 80 ? "🏆" : pct >= 50 ? "👍" : "💪";
+  const emoji = pct === 100 ? "🏆" : pct >= 50 ? "👍" : "💪";
   const yearBefore = subjectYear(subject);
 
-  const result = finishTopicSession(subject, topicId, correctCount, total, isLevelUp);
+  const result = finishTopicSession(subject, topicId, correctCount, total);
 
   const yearAfter = subjectYear(subject);
   const yearBannerHTML = (yearAfter > yearBefore)
     ? `<div class="year-banner">🎓 Amazing work — moving into Year ${yearAfter} for ${cfg.label}!</div>`
     : "";
 
-  let statusHTML;
-  if(isLevelUp){
-    statusHTML = result.passed
-      ? `<div class="year-banner">🎉 Leveled up! ${topicName} is now <strong>${cfg.tierLabels[result.tierAfter]}</strong>.</div>`
-      : `<p class="explain" style="margin-top:10px;">Not quite this time — needed at least 9/10. No penalty though: keep practicing and try the Level-Up Round again whenever you're ready.</p>`;
-  } else if(result.readyForBonus){
-    statusHTML = `<p class="explain" style="margin-top:10px; color:#d97706; font-weight:700;">🎯 3 strong sessions in a row (${result.aggregatePct}% average) — ${topicName} is ready for the Level-Up Round!</p>`;
-  } else if(result.aggregatePct !== null){
-    statusHTML = `<p class="explain" style="margin-top:10px;">Last 3 sessions on ${topicName}: ${result.aggregatePct}% average. Needs 95% to unlock the Level-Up Round — a session or two more should do it.</p>`;
-  } else {
-    statusHTML = `<p class="explain" style="margin-top:10px;">Session ${result.sessionsDone} of ${SESSIONS_REQUIRED_FOR_BONUS} towards unlocking the next level for ${topicName}.</p>`;
-  }
+  const statusHTML = result.passed
+    ? `<div class="year-banner">🎉 Perfect 10/10 — ${topicName} levels up to <strong>${cfg.tierLabels[result.tierAfter]}</strong>!</div>`
+    : `<p class="explain" style="margin-top:10px;">${correctCount}/10 this time — needs a perfect 10/10 to advance. No penalty: try again whenever you're ready, with all-new questions.</p>`;
 
   const missed = roundResults.filter(r=>!r.correct);
   const missedHTML = missed.length
     ? missed.slice(0,3).map(m=>`<div class="summary-stat" style="display:block;"><div class="explain">${m.explain}</div></div>`).join("")
     : `<div class="summary-stat" style="border:none;"><span style="color:#16a34a; font-weight:600;">Perfect session! 🎉</span></div>`;
 
-  const levelUpBtnHTML = (!isLevelUp && result.readyForBonus)
-    ? `<button class="bonus-btn" onclick="startTopicSession('${subject}','${topicId}',true)">🎯 Level-Up Round (10 Qs)</button>` : "";
-
   app.innerHTML = `
     <div class="card">
       <div class="big-emoji">${emoji}</div>
       <h1 style="text-align:center;">${correctCount} / ${total} correct</h1>
-      <p class="subtitle" style="text-align:center;">${topicName}${isLevelUp?' — Level-Up Round':' — practice session'} complete.</p>
+      <p class="subtitle" style="text-align:center;">${topicName} — practice session complete.</p>
       ${yearBannerHTML}
       ${statusHTML}
       <h1 style="font-size:1.05rem; margin-top:18px;">What to review</h1>
       ${missedHTML}
-      ${levelUpBtnHTML}
-      <button class="next-btn" onclick="startTopicSession('${subject}','${topicId}',false)">Practice again</button>
+      <button class="next-btn" onclick="startTopicSession('${subject}','${topicId}')">Practice again</button>
       <button class="dashboard-btn" onclick="renderTopicSelect('${subject}')">Back to ${cfg.label} topics</button>
       <button class="back-link" style="margin-top:10px;" onclick="renderHome()">Home</button>
     </div>`;
@@ -1876,10 +1871,9 @@ function renderDashboard(){
     const rows = cfg.topics.map(t=>{
       const s = STATE[subject].topics[t.id];
       const acc = s.attempts ? Math.round((s.correct/s.attempts)*100) : null;
-      const readyTag = s.readyForBonus ? ` <span style="color:#d97706; font-weight:700;">· ready to level up!</span>` : "";
-      const gapTag = (!s.readyForBonus && s.needsReview) ? ` <span style="color:#d97706; font-weight:700;">· gap</span>` : "";
+      const gapTag = s.needsReview ? ` <span style="color:#d97706; font-weight:700;">· needs 100% to advance</span>` : "";
       return `<div class="summary-stat">
-        <span class="topic-name">${t.name}${gapTag}${readyTag}</span>
+        <span class="topic-name">${t.name}${gapTag}</span>
         <span><span class="tier-badge t${s.tier % 4}">${cfg.tierLabels[s.tier]}</span> ${acc!==null?` · ${acc}%`:""}</span>
       </div>`;
     }).join("");
