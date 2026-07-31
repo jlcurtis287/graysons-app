@@ -161,12 +161,12 @@ const CURRICULUM = {
     tierLabels: ["Getting Started","Building Understanding","Making Connections","Deeper Thinking"],
     isReading: true, // triggers the primer-then-questions round flow
     topics: [
-      {id:"flag", name:"The American Flag",
-        primer:"The flag of the United States has 50 white stars and 13 red and white stripes. Each star stands for one of the 50 states in the country today. The 13 stripes stand for the first 13 colonies that became the United States back in 1776. The flag is sometimes called \"Old Glory\" or \"the Stars and Stripes.\" Many Americans say the Pledge of Allegiance while looking at the flag, especially at school in the morning."},
-      {id:"independence_day", name:"Independence Day",
-        primer:"A long time ago, America was made up of 13 colonies ruled by Britain, far across the ocean. Many colonists felt this wasn't fair, because they had no say in the laws that governed them. On July 4, 1776, leaders signed the Declaration of Independence — a document saying the colonies were now a free country called the United States. That's why Americans celebrate the Fourth of July every year with fireworks, parades, and picnics. It's the country's birthday!"},
-      {id:"washington", name:"George Washington",
-        primer:"George Washington was a general who led American soldiers during the Revolutionary War — the fight for independence from Britain. After America won, Washington became the very first President of the United States, in 1789. He is sometimes called the \"Father of His Country.\" His face appears on the one-dollar bill and the quarter coin, and a giant carving of his face is on Mount Rushmore."},
+      // The American Flag / Independence Day / George Washington were
+      // removed per JC (2026-07-31) — Grayson has already covered these in
+      // real life and doesn't want to repeat them. Their old G.history
+      // generator content was removed too (see below); STATE cleanup for
+      // any pre-existing progress on these topics is handled by migrateState
+      // pruning topics no longer in CURRICULUM.
       {id:"lincoln", name:"Abraham Lincoln",
         primer:"Abraham Lincoln was the 16th President of the United States. He led the country through the Civil War, a war between the Northern and Southern states. One of the biggest reasons for the war was slavery: some states wanted to keep enslaving people, while others wanted it to end. In 1863, Lincoln signed the Emancipation Proclamation, an important step toward ending slavery in the United States. Lincoln is remembered for his honesty and for helping hold the country together."},
       {id:"thanksgiving", name:"Thanksgiving",
@@ -1001,72 +1001,10 @@ G.english.composition = [
 ];
 
 // ---- HISTORY: 6 fixed comprehension questions per topic (easy -> harder) ----
-// Each topic's tier controls how MANY of its 6 questions are unlocked for a
-// given round visit (2 at tier0, 3 at tier1, 4 at tier2/3) — the same
-// per-topic tier/streak state and recordAnswer logic used by math/english
-// drives this, no separate leveling code needed. Having 6 questions but only
-// showing up to 4 per visit (see buildHistoryRound, which prefers whichever
-// haven't been asked recently) is what lets the round rotate through more
-// content instead of showing the exact same 4 every single time.
-G.history.flag = [
-  () => makeFactMCQ("50", ["13","48","52"], "The flag has 50 stars, one for each of the 50 states.",
-    "How many stars are on the American flag?"),
-  () => makeFactMCQ("The first 13 colonies", ["The 13 presidents","The 13 states today","The 13 wars fought"],
-    "The 13 stripes stand for the first 13 colonies that became the United States.",
-    "What do the 13 stripes on the flag stand for?"),
-  () => makeFactMCQ("Because there are 50 states today", ["Because it looked nice","Because there were 50 presidents","Because the flag is 50 years old"],
-    "Each star stands for one of the 50 states, so there are 50 stars.",
-    "Why does the flag have 50 stars?"),
-  () => makeFactMCQ("Old Glory", ["Red White Blue","Freedom Flag","Liberty Banner"],
-    "The passage says the flag is sometimes called \"Old Glory\" or \"the Stars and Stripes.\"",
-    "What is another nickname for the flag, mentioned in the passage?"),
-  () => makeFactMCQ("Red and white", ["Blue and gold","Green and white","Red and blue"],
-    "The passage says the 13 stripes are red and white.",
-    "What colors are the stripes on the American flag?"),
-  () => makeFactMCQ("The Pledge of Allegiance", ["The national anthem","A birthday song","A poem about stars"],
-    "The passage says many Americans say the Pledge of Allegiance while looking at the flag, especially at school.",
-    "What do many Americans say while looking at the flag, especially at school in the morning?"),
-];
-G.history.independence_day = [
-  () => makeFactMCQ("The Declaration of Independence", ["The Constitution","The Bill of Rights","The Emancipation Proclamation"],
-    "On July 4, 1776, leaders signed the Declaration of Independence.",
-    "What document was signed on July 4, 1776?"),
-  () => makeFactMCQ("The country's birthday", ["Washington's birthday","The end of a war","The start of school"],
-    "The passage calls July 4th the country's birthday, since that's when it became independent.",
-    "What is July 4th often called?"),
-  () => makeFactMCQ("They had no say in the laws that governed them", ["They wanted a bigger flag","They ran out of food","They wanted a king of their own"],
-    "The colonists felt it wasn't fair to be ruled by Britain when they had no say in the laws.",
-    "Why did the colonists want independence from Britain?"),
-  () => makeFactMCQ("Fireworks, parades, and picnics", ["Sending letters to Britain","A quiet day at school","Building new colonies"],
-    "The passage says Americans celebrate with fireworks, parades, and picnics.",
-    "How do Americans usually celebrate the Fourth of July?"),
-  () => makeFactMCQ("13", ["10","20","50"],
-    "The passage says America was made up of 13 colonies ruled by Britain.",
-    "How many colonies were there before independence?"),
-  () => makeFactMCQ("Britain", ["France","Spain","Native Americans"],
-    "The passage says the 13 colonies were ruled by Britain, far across the ocean.",
-    "Which country ruled the 13 colonies before independence?"),
-];
-G.history.washington = [
-  () => makeFactMCQ("The first President", ["The 16th President","The current President","A king"],
-    "George Washington became the very first President of the United States in 1789.",
-    "Which President was George Washington?"),
-  () => makeFactMCQ("A general who led soldiers in the Revolutionary War", ["A ship captain","A schoolteacher","A king of Britain"],
-    "Before becoming President, Washington was a general who led American soldiers in the Revolutionary War.",
-    "What was George Washington's job before he became President?"),
-  () => makeFactMCQ("\"Father of His Country\"", ["\"The Great Explorer\"","\"The Peacemaker\"","\"The First Citizen\""],
-    "The passage says Washington is sometimes called the \"Father of His Country.\"",
-    "What nickname is given to George Washington in the passage?"),
-  () => makeFactMCQ("The one-dollar bill", ["The ten-dollar bill","A postage stamp only","A football jersey"],
-    "The passage says his face appears on the one-dollar bill (and the quarter, and Mount Rushmore).",
-    "Name one place mentioned in the passage where you can see George Washington's face."),
-  () => makeFactMCQ("1789", ["1776","1620","1863"],
-    "The passage says Washington became President in 1789.",
-    "In what year did George Washington become President?"),
-  () => makeFactMCQ("Mount Rushmore", ["The Statue of Liberty","The White House","The Capitol Building"],
-    "The passage says a giant carving of Washington's face is on Mount Rushmore.",
-    "Besides money, where is a giant carving of Washington's face, according to the passage?"),
-];
+// Each topic's adaptive-model tier controls how MANY of its 6 questions are
+// unlocked (3 at tier0, up to all 6 at tier3) — see questionForConceptTier's
+// isReading branch. flag / independence_day / washington content removed
+// per JC (2026-07-31) — Grayson already covered these topics in real life.
 G.history.lincoln = [
   () => makeFactMCQ("The 16th President", ["The first President","The 2nd President","The current President"],
     "Abraham Lincoln was the 16th President of the United States.",
@@ -1195,18 +1133,14 @@ const STORAGE_KEY = "graysons_app_state_v1";
 function defaultTopicState(){
   // Starts at true tier 0 ("Basics") — a topic he hasn't played yet should
   // never look like it's already at "Advanced" before he's answered anything.
-  // recentQuestions: History-only — last few question texts asked for this
-  // topic, so the same comprehension question doesn't resurface visit after
-  // visit (see buildHistoryRound below).
-  // seenAtTier: Math/English-only — EVERY question text he's already been
-  // shown at this topic's CURRENT tier, growing across repeated attempts
-  // (not capped like recentQuestions). Cleared only when the tier actually
-  // changes, so a retry of a module never repeats a question from an
-  // earlier attempt at the same level — see questionForTopic below.
-  // concepts: Math-only (as of the adaptive-learner-model pilot below) — a
-  // per-tier learner model keyed by tier number, holding independent
-  // mastery/confidence/retrieval-strength estimates. Empty/unused for
-  // English and History, which still use the flat tier/streak fields above.
+  // tier/correctStreak/wrongStreak/needsReview/recentQuestions/seenAtTier are
+  // legacy fields from the pre-adaptive-engine tier/streak system (kept in
+  // the shape for backward-compatible migration of old saves, but no longer
+  // read by any current gameplay logic — see `concepts` below instead).
+  // concepts: the adaptive learner model, keyed by tier number, holding each
+  // tier's independent mastery/confidence/retrieval-strength/misconception
+  // state. Used by all three subjects (Math, English, History) — see
+  // section 5b below.
   return { tier:0, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0,
     recentQuestions:[], seenAtTier:[], concepts:{} };
 }
@@ -1261,20 +1195,29 @@ function migrateState(s){
         existing._migratedTierScale = "v9";
         existing.seenAtTier = [];
       }
-      // One-time seed of the new per-tier concept model (Math only) from the
-      // old flat tier scalar: tiers below the old tier get a high mastery
-      // prior (he'd already advanced past them under the old rule), the
-      // current tier and above start low (not yet demonstrated under the new
-      // model) — so switching models doesn't wipe or artificially inflate
-      // progress. Guarded so it only ever runs once per save.
-      if(subj === "math" && existing._migratedToConceptModel !== "v1"){
-        const maxTier = CURRICULUM.math.yearForTier.length - 1;
+      // One-time seed of the per-tier concept model (all three subjects)
+      // from the old flat tier scalar: tiers below the old tier get a high
+      // mastery prior (he'd already advanced past them under the old rule),
+      // the current tier and above start low (not yet demonstrated under
+      // the new model) — so switching models doesn't wipe or artificially
+      // inflate progress. Guarded so it only ever runs once per save.
+      if(existing._migratedToConceptModel !== "v1"){
+        const maxTier = CURRICULUM[subj].tierLabels.length - 1;
         for(let t=0; t<=maxTier; t++){
           existing.concepts[t] = defaultConceptState();
           existing.concepts[t].mastery = t < existing.tier ? 0.85 : 0.15;
         }
         existing._migratedToConceptModel = "v1";
       }
+    }
+    // Prune any saved topic no longer in CURRICULUM (e.g. flag/
+    // independence_day/washington, removed 2026-07-31 at JC's request since
+    // Grayson already covered them in real life) — otherwise stale progress
+    // data would sit in STATE/Firestore forever, unreachable but taking up
+    // space and confusing future debugging.
+    const validIds = new Set(CURRICULUM[subj].topics.map(t=>t.id));
+    for(const savedId of Object.keys(s[subj].topics)){
+      if(!validIds.has(savedId)) delete s[subj].topics[savedId];
     }
   }
   if(s.updatedAt === undefined) s.updatedAt = 0;
@@ -1323,275 +1266,73 @@ function bumpRoundCounters(subject, touchedTopicIds){
   }
 }
 
-// Generates one question for a Math/English topic at its current tier,
-// retrying if it collides with (a) a question already used elsewhere in
-// THIS session, or (b) ANY question already seen at this exact tier in a
-// PREVIOUS attempt (topicState.seenAtTier). Unlike the old capped memory,
-// seenAtTier is never trimmed — it only clears when the tier actually
-// changes (see finishTopicSession) — so a retry of a module he didn't ace
-// never repeats a question from an earlier attempt at the same level. A
-// generous retry budget (60) gives thin content pools a fair chance to find
-// something fresh; only once a pool is truly exhausted does it fall back to
-// a repeat (an inherent content-size limit, not a bug — see the content
-// audit for which tiers are thinnest).
-function questionForTopic(subject, topicId, usedTexts){
-  const topicState = STATE[subject].topics[topicId];
-  const tier = topicState.tier;
-  const gens = G[subject][topicId];
-  const seen = new Set(topicState.seenAtTier || []);
-  let q, attempts = 0;
-  do {
-    q = gens[Math.min(tier, gens.length-1)]();
-    attempts++;
-  } while((usedTexts.has(q.q) || seen.has(q.q)) && attempts < 60);
-  usedTexts.add(q.q);
-  if(!topicState.seenAtTier) topicState.seenAtTier = [];
-  if(!topicState.seenAtTier.includes(q.q)) topicState.seenAtTier.push(q.q);
-  return { topicId, tier, ...q };
-}
-
-function questionsForTopicOrder(subject, order){
-  const usedTexts = new Set();
-  return order.map(topicId => questionForTopic(subject, topicId, usedTexts));
-}
-
-// Standard (math/english) round: exactly one question per topic, every
-// topic covered, nothing repeated within the round. Extra reinforcement for
-// weak topics happens through the dedicated bonus round instead of padding
-// the main round with repeats — that way a gap gets focused practice at its
-// own level without ever colliding with (or crowding out) other topics.
-function pickTopicOrder(subject){
-  return shuffle(CURRICULUM[subject].topics.map(t=>t.id));
-}
-
-function buildRound(subject){
-  if(CURRICULUM[subject].isReading) return buildHistoryRound(subject);
-  const order = pickTopicOrder(subject);
-  bumpRoundCounters(subject, order);
-  return questionsForTopicOrder(subject, order);
-}
-
-// History topic selection: breadth first. Picks whichever topics have gone
-// longest without being visited, so all 9 topics rotate through before any
-// one of them repeats. (Topics he's struggling with still get attention —
-// via the bonus round below — rather than monopolizing the main rotation,
-// which is what was causing the same history questions to resurface every
-// round.)
-const HISTORY_TOPICS_PER_ROUND = 3;
-const RECENT_QUESTIONS_MEMORY = 4; // History-only now — see buildHistoryRound below
-function pickHistoryTopicsForRotation(subject, count){
-  const topics = CURRICULUM[subject].topics.map(t=>t.id);
-  const s = STATE[subject].topics;
-  const byStaleness = [...topics].sort((a,b) => s[b].roundsSince - s[a].roundsSince);
-  return byStaleness.slice(0, count);
-}
-
-// History round: pick a handful of topics; for each, unlock more of its 6
-// fixed comprehension questions as its tier rises (2 at tier0, 3 at tier1,
-// 4 at tier2+), primer shown once before the first question of that topic.
-// Each topic has 6 questions total but a visit only shows up to 4 of them —
-// which 4 is chosen by preferring whichever haven't been asked in the last
-// couple of visits (same recentQuestions idea as questionForTopic above),
-// so repeat visits to the same topic rotate through its content instead of
-// always showing the identical first N questions in the same order.
-function buildHistoryRound(subject, topicIdsOverride){
-  const topicIds = topicIdsOverride || pickHistoryTopicsForRotation(subject, HISTORY_TOPICS_PER_ROUND);
-  if(!topicIdsOverride) bumpRoundCounters(subject, topicIds);
-  const out = [];
-  for(const topicId of topicIds){
-    const topicState = STATE[subject].topics[topicId];
-    const tier = topicState.tier;
-    const unlockCount = Math.min(tier+2, 4);
-    const topicDef = CURRICULUM[subject].topics.find(t=>t.id===topicId);
-    const qFns = G[subject][topicId];
-    const recent = new Set(topicState.recentQuestions || []);
-    // Evaluate every fixed question once (they're deterministic content, not
-    // randomly generated), then prefer ones NOT recently shown, falling back
-    // to the recently-shown ones only if the pool is smaller than unlockCount.
-    const all = qFns.map((fn, idx) => ({ idx, q: fn() }));
-    const fresh = all.filter(c => !recent.has(c.q.q));
-    const stale = all.filter(c => recent.has(c.q.q));
-    const chosen = [...fresh, ...stale].slice(0, unlockCount).sort((a,b) => a.idx - b.idx);
-    chosen.forEach((c, i) => {
-      out.push({ topicId, tier, primer: i===0 ? topicDef.primer : null, ...c.q });
-    });
-    topicState.recentQuestions = chosen.map(c => c.q.q)
-      .concat(topicState.recentQuestions || [])
-      .slice(0, RECENT_QUESTIONS_MEMORY + 2); // History pool is bigger (6), remember a bit more
-  }
-  return out;
-}
-
-// Bonus round: focused practice on exactly the topics that gave trouble
-// last round, at their CURRENT (already-weak) tier — this is deliberately
-// where repeats/reinforcement live, so the main round stays gap-free and a
-// struggling topic gets deeper practice without skipping ahead to harder
-// content or crowding out topics he's already solid on.
-function buildBonusRound(subject, topicIds){
-  if(!topicIds || !topicIds.length) return [];
-  if(CURRICULUM[subject].isReading) return buildHistoryRound(subject, topicIds);
-  const shuffledBase = shuffle(topicIds);
-  const order = [];
-  for(let i=0;i<10;i++) order.push(shuffledBase[i % shuffledBase.length]);
-  return questionsForTopicOrder(subject, order);
-}
-
-// HISTORY ONLY as of the Math/English topic-session redesign below (Math and
-// English now level up via buildTopicSession/finishTopicSession instead —
-// see those functions further down). History keeps this simpler per-question
-// rule since its 4-tier scale and small fixed question pool don't fit the
-// same "3 sessions of 10, 95%" model.
-//
-// Leveling rule: a topic only gets harder once it's been answered correctly
-// twice in a row at the current tier (no mistakes in between). A topic only
-// gets easier after two mistakes in a row at the current tier — a single
-// slip doesn't knock him down a level, it just flags the topic for a bit
-// more practice. Tier is capped 0-3 (Getting Started through Deeper
-// Thinking), so a mastered topic never goes past the ceiling. Returns what
-// happened so the UI can explain it.
-//
-// isBonus: History's bonus round deliberately repeats a weak topic several
-// times in one sitting (see buildBonusRound above) — that's reinforcement,
-// not new evidence of mastery. If tier/streak changes were allowed there, 2
-// lucky guesses back-to-back inside a single 10-question bonus round could
-// ratchet a topic all the way up in one sitting, which is exactly the "level
-// went up but that doesn't seem real" bug this guards against. Bonus rounds
-// still track attempts/correct (so accuracy % stays meaningful) but never
-// change tier, streaks, or the needsReview flag — only real progress in a
-// NORMAL round can move the needle.
-function recordAnswer(subject, topicId, wasCorrect, isBonus){
-  const t = STATE[subject].topics[topicId];
-  const tierBefore = t.tier;
-  t.attempts++;
-  let leveledUp = false, leveledDown = false;
-  if(isBonus){
-    if(wasCorrect) t.correct++;
-    saveState(STATE);
-    return { tierBefore, tierAfter: t.tier, leveledUp, leveledDown };
-  }
-  if(wasCorrect){
-    t.correct++; t.correctStreak++; t.wrongStreak = 0;
-    if(t.correctStreak >= 2){
-      t.needsReview = false;
-      if(t.tier < 3){ t.tier++; leveledUp = true; }
-      t.correctStreak = 0;
-    }
-  } else {
-    t.wrongStreak++; t.correctStreak = 0;
-    t.needsReview = true;
-    if(t.wrongStreak >= 2 && t.tier > 0){ t.tier--; leveledDown = true; t.wrongStreak = 0; }
-  }
-  saveState(STATE);
-  return { tierBefore, tierAfter: t.tier, leveledUp, leveledDown };
-}
-
 // Subject-wide "year" for math/english: the year of the topic he's weakest
 // in, since the goal is uniform mastery, not racing ahead on his favourite
 // topic while others lag. Returns null for subjects without yearForTier
-// (e.g. History, which uses depth labels instead of years).
+// (e.g. History, which uses depth labels instead of years). All three
+// subjects now read the per-tier concept model (currentDisplayTier) — none
+// of them write the old flat `tier` field anymore.
 function subjectYear(subject){
   const cfg = CURRICULUM[subject];
   if(!cfg.yearForTier) return null;
-  // Math reads its per-tier concept model (currentDisplayTier), since the
-  // adaptive Tutor Engine no longer writes the old flat `tier` field —
-  // everything else still reads the flat field directly.
-  const tiers = cfg.topics.map(t => subject === "math"
-    ? currentDisplayTier(subject, t.id)
-    : STATE[subject].topics[t.id].tier);
+  const tiers = cfg.topics.map(t => currentDisplayTier(subject, t.id));
   return Math.min(...tiers.map(t => cfg.yearForTier[t]));
 }
 
 /* ---------------------------------------------------------------------
-   5b. TOPIC-FOCUSED PRACTICE SESSIONS (Math & English)
-   Deliberate practice model, one topic at a time:
-     1. Grayson picks ONE topic and plays a focused 10-question module at
-        that topic's current tier (Basic/Intermediate/Advanced within
-        Year 2, then Year 3, then Year 4 — 9 tiers total, capped at 8).
-     2. 100% correct (10/10), first time through -> advances immediately
-        to the next tier. No separate assessment round, no averaging
-        across sessions — one clean module at 100% is the bar.
-     3. Anything less than 100% -> tier stays the same and he repeats the
-        SAME module. No penalty, no lockout — he can retry as soon as he
-        likes, and every retry is built from entirely new questions (see
-        seenAtTier in questionForTopic above) so he's never re-shown a
-        question from an earlier attempt at that level.
-   History is unaffected — it keeps its own simpler per-question rule
-   (recordAnswer above) since its content model (a handful of fixed
-   comprehension questions per topic) doesn't fit this structure.
-   --------------------------------------------------------------------- */
-const SESSION_LENGTH = 10;
-
-// Builds one focused 10-question session for a single topic at its current
-// tier. Reuses questionForTopic's per-topic seenAtTier memory (so nothing
-// repeats across attempts at the same level) plus a within-session
-// usedTexts set (so it never repeats within THIS session either).
-function buildTopicSession(subject, topicId){
-  const usedTexts = new Set();
-  const out = [];
-  for(let i=0;i<SESSION_LENGTH;i++) out.push(questionForTopic(subject, topicId, usedTexts));
-  return out;
-}
-
-// Called once, at the end of a focused session, with how many of the
-// SESSION_LENGTH questions were correct. The rule is simple: 100% (every
-// question right, first time through) advances immediately to the next
-// tier; anything less than 100% means the topic stays at the same tier and
-// he tries the module again — with entirely fresh questions next time,
-// thanks to seenAtTier. No separate assessment round, no rolling average.
-function finishTopicSession(subject, topicId, correctCount, totalCount){
-  const t = STATE[subject].topics[topicId];
-  const tierBefore = t.tier;
-  t.attempts += totalCount;
-  t.correct += correctCount;
-
-  const passed = correctCount === totalCount;
-  if(passed){
-    const maxTier = CURRICULUM[subject].yearForTier.length - 1;
-    if(t.tier < maxTier) t.tier++;
-    t.seenAtTier = []; // fresh tier, fresh content pool
-    t.needsReview = false;
-  } else {
-    t.needsReview = true; // same tier — must repeat until 100%
-  }
-  saveState(STATE);
-  return { tierBefore, tierAfter:t.tier, passed };
-}
-
-/* ---------------------------------------------------------------------
-   5c. ADAPTIVE LEARNER MODEL — MATH PILOT
+   5b. ADAPTIVE LEARNER MODEL — all three subjects
    Per the Adaptive Tutor Design Specification: mastery is never a one-time
-   event. Each Math topic is broken into per-tier "concepts" (topicId+tier),
-   each independently tracked across several axes: mastery (belief the
-   underlying skill is learned), confidence (how much evidence backs that
-   belief — deliberately separate from mastery), retrieval strength /
-   forgetting risk (a decaying memory-freshness estimate), misconceptions
-   (recurring wrong-answer patterns), hint usage, response time, and a
-   capped review history. Nothing here is English/History-facing; those two
-   subjects are untouched and keep the tier/streak model above.
+   event. Every topic (Math, English, History alike) is broken into per-tier
+   "concepts" (topicId+tier), each independently tracked across several
+   axes: mastery (belief the underlying skill is learned), confidence (how
+   much evidence backs that belief — deliberately separate from mastery),
+   retrieval strength/forgetting risk (a decaying memory-freshness
+   estimate), misconceptions (recurring wrong-answer patterns, Math only —
+   see classifyMisconception), hint usage, response time, and a capped
+   review history.
+
+   Originally built as a Math-only pilot, then ported to English (identical
+   content shape: procedurally-generated, tier-indexed generators) and
+   History (different shape: a small FIXED pool of 6 comprehension
+   questions per topic, 4 tiers instead of 9 — see questionForConceptTier's
+   isReading branch and the History-specific hint/prerequisite handling).
 
    Architecture, mapped to the spec's named systems:
-     - Knowledge Graph  -> MATH_PREREQUISITES + prerequisitesReady()
+     - Knowledge Graph  -> SUBJECT_PREREQUISITES + prerequisitesReady()
      - Learner Model    -> defaultConceptState/bktUpdate/updateConcept
      - Review Engine    -> retrievalStrengthNow/forgettingRisk (spaced rep.)
-     - Tutor Engine      -> topicPriorityScore/buildAdaptiveMathSession
+     - Tutor Engine      -> topicPriorityScore/buildAdaptiveSession
      - Assessment Engine -> questionForConceptTier + the answerAdaptive UI fn
    Kept as plain functions over the existing STATE object (no framework/
    build step) so the app stays a single deployable static file.
    --------------------------------------------------------------------- */
 
-// ---- Knowledge Graph: which Math topics lean on which others ----
+// ---- Knowledge Graph: which topics lean on which others, per subject ----
 // Used to avoid pushing a topic's next tier when a prerequisite is itself
 // shaky — practicing "Fractions" tier 4 when "Place Value" is still weak
-// just produces confused guessing, not learning.
-const MATH_PREREQUISITES = {
-  place_value: [],
-  add_sub:     ["place_value"],
-  mult_div:    ["add_sub"],
-  fractions:   ["place_value", "mult_div"],
-  measurement: ["add_sub"],
-  geometry:    [],
-  statistics:  ["add_sub"],
-  reasoning:   ["add_sub", "mult_div"],
+// just produces confused guessing, not learning. History's topics are
+// independent historical facts/events with no real prerequisite structure,
+// so it gets an empty map (no gating) rather than a forced hierarchy.
+const SUBJECT_PREREQUISITES = {
+  math: {
+    place_value: [],
+    add_sub:     ["place_value"],
+    mult_div:    ["add_sub"],
+    fractions:   ["place_value", "mult_div"],
+    measurement: ["add_sub"],
+    geometry:    [],
+    statistics:  ["add_sub"],
+    reasoning:   ["add_sub", "mult_div"],
+  },
+  english: {
+    word_classes:       [],
+    sentence_structure:  ["word_classes"],
+    punctuation:         ["sentence_structure"],
+    tenses:              ["word_classes"],
+    vocabulary:          [],
+    composition:         ["sentence_structure", "punctuation"],
+  },
+  history: {}, // independent facts — no prerequisite gating
 };
 
 // ---- Bayesian Knowledge Tracing parameters ----
@@ -1738,14 +1479,17 @@ function masteryAtTier(subject, topicId, tier){
 // ever reflect actual evidence in the concept model — no separate "tier"
 // value to drift out of sync with the mastery data behind it.
 function currentDisplayTier(subject, topicId){
-  const maxTier = CURRICULUM[subject].yearForTier.length - 1;
+  // tierLabels.length works uniformly across the 9-tier Math/English scale
+  // and History's 4-tier depth scale — yearForTier only exists for
+  // Math/English (it's just the Year-label lookup, orthogonal to tier count).
+  const maxTier = CURRICULUM[subject].tierLabels.length - 1;
   let tier = 0;
   while(tier < maxTier && masteryAtTier(subject, topicId, tier) >= 0.8) tier++;
   return tier;
 }
-function prerequisitesReady(topicId){
-  const prereqs = MATH_PREREQUISITES[topicId] || [];
-  return prereqs.every(pId => masteryAtTier("math", pId, currentDisplayTier("math", pId)) >= 0.5);
+function prerequisitesReady(subject, topicId){
+  const prereqs = (SUBJECT_PREREQUISITES[subject] || {})[topicId] || [];
+  return prereqs.every(pId => masteryAtTier(subject, pId, currentDisplayTier(subject, pId)) >= 0.5);
 }
 
 // ---- Review Engine + Tutor Engine ----
@@ -1773,7 +1517,7 @@ function frontierTier(subject){
 // focus-mode selection. A flat "focus bonus" here used to just nudge the
 // odds in a multi-way weighted draw, which wasn't enough to make "Focus on
 // this" feel focused; that's now handled by direct slot reservation in
-// buildAdaptiveMathSession instead (see FOCUS_SLOT_RATIO).
+// buildAdaptiveSession instead (see FOCUS_SLOT_RATIO).
 function topicPriorityScore(subject, topicId, frontier){
   const activeTier = currentDisplayTier(subject, topicId);
   const concept = STATE[subject].topics[topicId].concepts[activeTier] || defaultConceptState();
@@ -1781,7 +1525,7 @@ function topicPriorityScore(subject, topicId, frontier){
   const dueScore = Math.max(0, REVIEW_DUE_THRESHOLD - rs) * 2;
   const predicted = predictedSuccess(concept);
   const zpdScore = 1 - Math.min(1, Math.abs(predicted - ZPD_TARGET) / 0.3);
-  const readinessPenalty = prerequisitesReady(topicId) ? 0 : 0.6;
+  const readinessPenalty = prerequisitesReady(subject, topicId) ? 0 : 0.6;
   const stalenessBonus = Math.min(0.3, (STATE[subject].topics[topicId].roundsSince||0) * 0.05);
   const catchUpBonus = frontier != null ? Math.max(0, frontier - activeTier) * CATCH_UP_WEIGHT : 0;
   return Math.max(0.05, dueScore + zpdScore + stalenessBonus + catchUpBonus - readinessPenalty);
@@ -1793,6 +1537,33 @@ function questionForConceptTier(subject, topicId, tier, usedTexts){
   const concept = topicState.concepts[tier];
   const gens = G[subject][topicId];
   const seen = new Set(concept.seenTexts || []);
+
+  if(CURRICULUM[subject].isReading){
+    // History: a small FIXED pool of 6 comprehension questions per topic,
+    // not tier-indexed generator functions. Higher tiers unlock more of the
+    // pool (3 at tier0, up to all 6 at tier3) rather than harder content —
+    // depth of coverage grows instead of difficulty. Prefer whichever
+    // haven't been shown yet (seenTexts), same anti-repeat idea as
+    // Math/English, falling back to a repeat only once the eligible subset
+    // is exhausted within this session.
+    const unlockCount = Math.min(tier + 3, gens.length);
+    const all = gens.map((fn, idx) => ({ idx, q: fn() }));
+    const fresh = all.filter(c => !seen.has(c.q.q));
+    const eligible = [...fresh, ...all.filter(c => seen.has(c.q.q))].slice(0, unlockCount);
+    const notUsedThisSession = eligible.filter(c => !usedTexts.has(c.q.q));
+    const pool = notUsedThisSession.length ? notUsedThisSession : eligible;
+    const chosen = pool[randInt(0, pool.length-1)];
+    usedTexts.add(chosen.q.q);
+    if(!concept.seenTexts.includes(chosen.q.q)) concept.seenTexts.push(chosen.q.q);
+    if(concept.seenTexts.length > gens.length) concept.seenTexts.shift();
+    return { topicId, tier, ...chosen.q };
+  }
+
+  // Math/English: procedurally generated, tier-indexed generator functions —
+  // retry on a collision with (a) a question already used elsewhere in THIS
+  // session, or (b) one already seen at this exact tier in a PREVIOUS
+  // attempt (concept.seenTexts), up to a generous retry budget (60) so thin
+  // content pools still get a fair chance to find something fresh.
   let q, attempts = 0;
   do { q = gens[Math.min(tier, gens.length-1)](); attempts++; }
   while((usedTexts.has(q.q) || seen.has(q.q)) && attempts < 60);
@@ -1802,12 +1573,12 @@ function questionForConceptTier(subject, topicId, tier, usedTexts){
   return { topicId, tier, ...q };
 }
 
-// Builds one interleaved, adaptive Math session. Two modes:
+// Builds one interleaved, adaptive session for any subject. Two modes:
 //
-// FREE mode (no focusTopicId — "Practice Math"): each of the 10 slots
-// re-scores every topic (so priorities can shift mid-session), then picks a
-// weighted-random topic from the top few candidates — never fully greedy
-// (sessions would feel robotic) and never allowing more than
+// FREE mode (no focusTopicId — "Practice Math/English/History"): each of the
+// 10 slots re-scores every topic (so priorities can shift mid-session), then
+// picks a weighted-random topic from the top few candidates — never fully
+// greedy (sessions would feel robotic) and never allowing more than
 // MAX_CONSECUTIVE_SAME_TOPIC in a row (interleaving, per the spec's "mixed
 // practice over blocked practice" principle).
 //
@@ -1820,12 +1591,17 @@ function questionForConceptTier(subject, topicId, tier, usedTexts){
 // to FOCUS_MAX_RUN questions with brief interleaved breaks for retention —
 // blocked deliberate practice with periodic retrieval checks, rather than a
 // three-way split that barely reads as "focused" at all.
+//
+// History-only: attaches the topic's primer to the FIRST question of that
+// topic to appear in the session (not every occurrence), same "read it once
+// per visit" idea as the old buildHistoryRound.
 const FOCUS_SLOT_RATIO = 0.8; // e.g. 8 of 10 slots go to the focus topic
 const FOCUS_MAX_RUN = 4;      // longest uninterrupted block before a breather question
-function buildAdaptiveMathSession(subject, focusTopicId){
+function buildAdaptiveSession(subject, focusTopicId){
   const topics = CURRICULUM[subject].topics.map(t=>t.id);
   const usedTexts = new Set();
   const out = [];
+  const primerShown = new Set();
   let lastTopic = null, lastTopicStreak = 0;
   // Computed once per session build, not per slot: tiers don't move mid-build
   // (they only change once an answer is actually recorded), so re-deriving
@@ -1855,7 +1631,13 @@ function buildAdaptiveMathSession(subject, focusTopicId){
       for(const s of pool){ r -= s.score; if(r<=0){ chosenId = s.id; break; } }
     }
     const activeTier = currentDisplayTier(subject, chosenId);
-    out.push(questionForConceptTier(subject, chosenId, activeTier, usedTexts));
+    const q = questionForConceptTier(subject, chosenId, activeTier, usedTexts);
+    if(CURRICULUM[subject].isReading && !primerShown.has(chosenId)){
+      const topicDef = CURRICULUM[subject].topics.find(t=>t.id===chosenId);
+      q.primer = topicDef.primer;
+      primerShown.add(chosenId);
+    }
+    out.push(q);
     if(chosenId === lastTopic) lastTopicStreak++; else { lastTopic = chosenId; lastTopicStreak = 1; }
   }
   bumpRoundCounters(subject, [...new Set(out.map(q=>q.topicId))]);
@@ -1918,21 +1700,16 @@ function cloudPull(){
    --------------------------------------------------------------------- */
 const app = document.getElementById("app");
 let currentRound = null, currentIndex = 0, currentSubject = null, roundResults = [];
-let currentRoundMode = "normal"; // "normal" | "bonus"
-let primerAcknowledged = {}; // topicId -> true, once its primer has been shown this round
-let yearBeforeRound = null; // subjectYear() snapshot taken at round start, for celebrating advances
+let primerAcknowledged = {}; // topicId -> true, once its primer has been shown this session
+let yearBeforeRound = null;  // subjectYear() snapshot taken at session start, for celebrating advances
+let questionShownAt = null;  // timestamp for response-time tracking
+let hintRevealed = false;
 
 function renderHome(){
   const subjectButtons = Object.keys(CURRICULUM).map((subj,i)=>{
     const cfg = CURRICULUM[subj];
     const wide = Object.keys(CURRICULUM).length % 2 === 1 && i === Object.keys(CURRICULUM).length-1;
-    // Math: routes to the new adaptive hub (Tutor Engine-driven interleaved
-    // sessions). English: unchanged, picks a topic then a focused 10Q module.
-    // History: unchanged — starts its own multi-topic reading round directly.
-    const action = cfg.isReading ? `startRound('${subj}')`
-      : subj === "math" ? `renderMathHub()`
-      : `renderTopicSelect('${subj}')`;
-    return `<button class="subject-btn ${subj}${wide?' full-width':''}" onclick="${action}">
+    return `<button class="subject-btn ${subj}${wide?' full-width':''}" onclick="renderSubjectHub('${subj}')">
       <span class="icon">${cfg.icon}</span> ${cfg.label}
     </button>`;
   }).join("");
@@ -1946,80 +1723,25 @@ function renderHome(){
     </div>`;
 }
 
-function startRound(subject, focusTopicIds){
-  currentSubject = subject;
-  primerAcknowledged = {};
-  yearBeforeRound = subjectYear(subject);
-  if(focusTopicIds && focusTopicIds.length){
-    currentRound = buildBonusRound(subject, focusTopicIds);
-    currentRoundMode = "bonus";
-  } else {
-    currentRound = buildRound(subject);
-    currentRoundMode = "normal";
-  }
-  currentIndex = 0;
-  roundResults = [];
-  if(!currentRound.length){ renderHome(); return; }
-  renderQuestion();
-}
-
-// Math/English topic picker: he chooses ONE topic and works through it with
-// a focused 10-question module, rather than a round mixing every topic
-// together. Shows each topic's current level and — if his last attempt
-// fell short of 100% — a reminder that a fresh attempt is needed to advance.
-function renderTopicSelect(subject){
+// Adaptive hub for ANY subject (Math, English, History): a primary
+// Tutor-Engine-driven "Practice X" session that interleaves whatever's due
+// for review, in the right challenge zone, or behind on catch-up — plus a
+// per-topic "Focus on this" option kept for agency/navigation (useful with a
+// 6-year-old who likes to choose what he's working on) without abandoning
+// interleaving entirely (see buildAdaptiveSession's focusTopicId handling).
+function renderSubjectHub(subject){
   const cfg = CURRICULUM[subject];
-  const year = subjectYear(subject);
-  const maxTier = cfg.yearForTier.length - 1;
+  const frontier = frontierTier(subject);
   const rows = cfg.topics.map(t=>{
-    const s = STATE[subject].topics[t.id];
-    const atCeiling = s.tier >= maxTier;
-    let progressLine;
-    if(atCeiling){
-      progressLine = `<div class="explain" style="color:#a855f7; font-weight:600;">🏆 Mastered — Year 4 Advanced!</div>`;
-    } else if(s.needsReview){
-      progressLine = `<div class="explain" style="color:#d97706; font-weight:700;">Needs 100% (all 10 correct) to advance — give it another go.</div>`;
-    } else {
-      progressLine = `<div class="explain">Get 10/10 to advance to the next level.</div>`;
-    }
-    return `<div class="summary-stat" style="display:block;">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="topic-name">${t.name}</span>
-        <span class="tier-badge t${s.tier % 4}">${cfg.tierLabels[s.tier]}</span>
-      </div>
-      ${progressLine}
-      <button class="next-btn" style="margin-top:8px;" onclick="startTopicSession('${subject}','${t.id}')">Practice (10 Qs)</button>
-    </div>`;
-  }).join("");
-  app.innerHTML = `
-    <div class="card">
-      <button class="back-link" onclick="renderHome()">Home</button>
-      <h1>${cfg.icon} ${cfg.label}</h1>
-      <p class="subject-summary">Currently working in: <strong>Year ${year}</strong> — pick a topic to practice.</p>
-      ${rows}
-    </div>`;
-}
-
-// ---- MATH HUB (adaptive learner-model pilot) ----
-// Replaces the old "pick a topic, do a fixed 10Q module" flow for Math with
-// a Tutor-Engine-driven session that interleaves whatever's due for review
-// or in the productive-struggle zone across topics. A per-topic "Focus on
-// this" option is kept for agency/navigation (useful with a 6-year-old who
-// likes to choose what he's working on) without abandoning interleaving —
-// see buildAdaptiveMathSession's focusTopicId bias.
-function renderMathHub(){
-  const cfg = CURRICULUM.math;
-  const frontier = frontierTier("math");
-  const rows = cfg.topics.map(t=>{
-    const tier = currentDisplayTier("math", t.id);
-    const concept = STATE.math.topics[t.id].concepts[tier] || defaultConceptState();
+    const tier = currentDisplayTier(subject, t.id);
+    const concept = STATE[subject].topics[t.id].concepts[tier] || defaultConceptState();
     const rs = Math.round(retrievalStrengthNow(concept)*100);
     const masteryPct = Math.round(concept.mastery*100);
     const dueTag = rs < REVIEW_DUE_THRESHOLD*100 && concept.lastSeenAt
       ? ` <span style="color:#d97706; font-weight:700;">· due for review</span>` : "";
-    // Behind his OWN most-advanced Math topic — Practice Math sessions give
-    // this extra weight until it catches up, per JC's request to prioritize
-    // closing gaps over racing ahead on his strongest topic.
+    // Behind his OWN most-advanced topic in this subject — Practice sessions
+    // give this extra weight until it catches up, per JC's request to
+    // prioritize closing gaps over racing ahead on his strongest topic.
     const behindTag = tier < frontier
       ? ` <span style="color:#2563eb; font-weight:700;">· catching up</span>` : "";
     return `<div class="summary-stat" style="display:block;">
@@ -2028,34 +1750,49 @@ function renderMathHub(){
         <span class="tier-badge t${tier % 4}">${cfg.tierLabels[tier]}</span>
       </div>
       <div class="explain">Mastery ${masteryPct}% · memory freshness ${concept.lastSeenAt ? rs+"%" : "not started"}</div>
-      <button class="dashboard-btn" style="margin-top:8px;" onclick="startAdaptiveSession('math','${t.id}')">Focus on this</button>
+      <button class="dashboard-btn" style="margin-top:8px;" onclick="startAdaptiveSession('${subject}','${t.id}')">Focus on this</button>
     </div>`;
   }).join("");
   app.innerHTML = `
     <div class="card">
       <button class="back-link" onclick="renderHome()">Home</button>
-      <h1>${cfg.icon} Math</h1>
+      <h1>${cfg.icon} ${cfg.label}</h1>
       <p class="subject-summary">A mixed, adaptive session — topics he's behind on get extra focus, plus whatever's due for review or in the right challenge zone.</p>
-      <button class="next-btn" onclick="startAdaptiveSession('math')">🎯 Practice Math</button>
+      <button class="next-btn" onclick="startAdaptiveSession('${subject}')">🎯 Practice ${cfg.label}</button>
       <h1 style="font-size:1.05rem; margin-top:18px;">Or focus on one topic</h1>
       ${rows}
     </div>`;
 }
 
-let questionShownAt = null; // timestamp for response-time tracking (adaptive Math sessions only)
-let hintRevealed = false;
-
 function startAdaptiveSession(subject, focusTopicId){
   currentSubject = subject;
-  currentRound = buildAdaptiveMathSession(subject, focusTopicId);
-  currentRoundMode = "adaptive";
+  primerAcknowledged = {};
+  yearBeforeRound = subjectYear(subject);
+  currentRound = buildAdaptiveSession(subject, focusTopicId);
   currentIndex = 0;
   roundResults = [];
   renderAdaptiveQuestion();
 }
 
+function renderPrimer(q){
+  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
+  app.innerHTML = `
+    <div class="card">
+      <button class="back-link" onclick="renderHome()">Exit</button>
+      <span class="qtag">${topicName}</span>
+      <p class="primer-text">📖 ${q.primer}</p>
+      <button class="next-btn" onclick="acknowledgePrimer()">I've read it — let's go!</button>
+    </div>`;
+}
+function acknowledgePrimer(){
+  primerAcknowledged[currentRound[currentIndex].topicId] = true;
+  renderAdaptiveQuestion();
+}
+window.acknowledgePrimer = acknowledgePrimer;
+
 function renderAdaptiveQuestion(){
   const q = currentRound[currentIndex];
+  if(q.primer && !primerAcknowledged[q.topicId]){ renderPrimer(q); return; }
   hintRevealed = false;
   questionShownAt = Date.now();
   const total = currentRound.length;
@@ -2082,26 +1819,49 @@ function renderAdaptiveQuestion(){
     </div>`;
 }
 
-// A lightweight hint: a generic, topic-level strategy nudge, shown on
-// request rather than after answering. Deliberately NOT derived from the
-// question's `explain` text — that always contains the final answer, which
-// would make "hint" mean "just tell me the answer." Tracked (hintRevealed)
-// so the learner model discounts the evidence value of a subsequent correct
-// answer (see bktUpdate).
-const MATH_HINTS = {
-  place_value: "Look at each digit's position — is it in the ones, tens, hundreds, or thousands place?",
-  add_sub:     "Try counting up from the smaller number, or break the numbers into tens and ones.",
-  mult_div:    "Think of it as equal groups — can you count up by that number?",
-  fractions:   "The bottom number tells you how many equal parts there are in total.",
-  measurement: "Picture a clock face or a ruler — what would the hands or marks show?",
-  geometry:    "Count the flat surfaces, corners, or straight edges carefully, one at a time.",
-  statistics:  "Look at each value one at a time and compare them side by side.",
-  reasoning:   "Read it step by step — what happens first, then what happens next?",
+// Generic per-topic strategy hints, one bank per subject — shown on request
+// rather than after answering. Deliberately NOT derived from a question's
+// `explain` text (that always contains the final answer, which would make
+// "hint" mean "just tell me the answer" — a real bug caught in Math before
+// this ever shipped). Tracked (hintRevealed) so the learner model discounts
+// the evidence value of a subsequent correct answer (see bktUpdate).
+const SUBJECT_HINTS = {
+  math: {
+    place_value: "Look at each digit's position — is it in the ones, tens, hundreds, or thousands place?",
+    add_sub:     "Try counting up from the smaller number, or break the numbers into tens and ones.",
+    mult_div:    "Think of it as equal groups — can you count up by that number?",
+    fractions:   "The bottom number tells you how many equal parts there are in total.",
+    measurement: "Picture a clock face or a ruler — what would the hands or marks show?",
+    geometry:    "Count the flat surfaces, corners, or straight edges carefully, one at a time.",
+    statistics:  "Look at each value one at a time and compare them side by side.",
+    reasoning:   "Read it step by step — what happens first, then what happens next?",
+  },
+  english: {
+    word_classes:       "Ask yourself: is it a person/place/thing, an action, or a describing word?",
+    sentence_structure: "Check whether the words form a complete thought that makes sense on its own.",
+    punctuation:        "Read it in your head — where would your voice naturally pause or stop?",
+    tenses:              "Ask when it happens: already happened, happening now, or hasn't happened yet?",
+    vocabulary:          "Sound the word out part by part, and think of any spelling rules you know.",
+    composition:         "Think about what makes writing clear and interesting to read.",
+  },
+  history: {
+    lincoln:          "Think back to what the passage said about him and the Civil War.",
+    thanksgiving:     "Think back to who was involved and what happened in the story.",
+    native_americans: "Think back to what the passage said about the people and tribes.",
+    mlk:              "Think back to what the passage said about his message and his famous speech.",
+    statue_of_liberty:"Think back to what the passage said about the statue and what it means.",
+    map_capital:      "Think back to what the passage said about the states and the capital.",
+  },
+};
+const SUBJECT_HINT_FALLBACK = {
+  math: "Take your time and think it through step by step.",
+  english: "Think about the rule you've learned for this.",
+  history: "Think back to what the passage said.",
 };
 function revealHint(){
   const q = currentRound[currentIndex];
   hintRevealed = true;
-  const hintText = MATH_HINTS[q.topicId] || "Take your time and think it through step by step.";
+  const hintText = (SUBJECT_HINTS[currentSubject] || {})[q.topicId] || SUBJECT_HINT_FALLBACK[currentSubject] || "Take your time.";
   const zone = document.getElementById("hintZone");
   if(zone) zone.innerHTML = `<div class="explain">💡 ${hintText}</div>`;
 }
@@ -2116,7 +1876,12 @@ function answerAdaptive(i){
     if(idx === q.correctIndex) btn.classList.add("correct");
     else if(idx === i) btn.classList.add("incorrect");
   });
-  const misconceptionTag = wasCorrect ? null : classifyMisconception(q.options[q.correctIndex], q.options[i]);
+  // Misconception tagging is numeric-pattern-based (off-by-ten/one) — only
+  // meaningful for Math's numeric answers. English/History answers are
+  // mostly text, where it would just always resolve to "conceptual" and add
+  // noise rather than insight, so it's skipped for those two subjects.
+  const misconceptionTag = (!wasCorrect && currentSubject === "math")
+    ? classifyMisconception(q.options[q.correctIndex], q.options[i]) : null;
   const before = currentDisplayTier(currentSubject, q.topicId);
   updateConcept(currentSubject, q.topicId, q.tier, {
     wasCorrect, hintUsed: hintRevealed, responseTimeMs, misconceptionTag
@@ -2146,6 +1911,7 @@ function nextAdaptiveQuestion(){
 window.nextAdaptiveQuestion = nextAdaptiveQuestion;
 
 function renderAdaptiveSummary(){
+  const cfg = CURRICULUM[currentSubject];
   const correctCount = roundResults.filter(r=>r.correct).length;
   const total = roundResults.length;
   const pct = Math.round((correctCount/total)*100);
@@ -2153,6 +1919,14 @@ function renderAdaptiveSummary(){
   const leveledUpTopics = [...new Set(roundResults.filter(r=>r.leveledUp).map(r=>r.topicName))];
   const levelUpHTML = leveledUpTopics.length
     ? `<p class="explain" style="margin-top:10px;">⬆ Mastery moved up in: <strong>${leveledUpTopics.join(", ")}</strong></p>` : "";
+
+  // Year-advance celebration: only for subjects with yearForTier (math/
+  // english). Compares the subject-wide year at session start vs now, so it
+  // only fires when the WHOLE subject crosses into a new year.
+  const yearAfterRound = subjectYear(currentSubject);
+  const yearBannerHTML = (yearBeforeRound !== null && yearAfterRound !== null && yearAfterRound > yearBeforeRound)
+    ? `<div class="year-banner">🎓 Amazing work — moving into Year ${yearAfterRound} for ${cfg.label}!</div>`
+    : "";
 
   // Surface recurring misconception patterns from THIS session in plain
   // language, rather than just "missed 2" — this is the point of tracking
@@ -2170,211 +1944,12 @@ function renderAdaptiveSummary(){
     <div class="card">
       <div class="big-emoji">${emoji}</div>
       <h1 style="text-align:center;">${correctCount} / ${total} correct</h1>
-      <p class="subtitle" style="text-align:center;">Math session complete.</p>
+      <p class="subtitle" style="text-align:center;">${cfg.label} session complete.</p>
+      ${yearBannerHTML}
       ${levelUpHTML}
       ${misconceptionHTML}
-      <button class="next-btn" onclick="startAdaptiveSession('math')">Practice Math again</button>
-      <button class="dashboard-btn" onclick="renderMathHub()">Back to Math</button>
-      <button class="back-link" style="margin-top:10px;" onclick="renderHome()">Home</button>
-    </div>`;
-}
-
-// Runs one focused 10-question module on a single topic, at its current
-// tier. 100% (10/10) advances to the next tier immediately; anything less
-// means trying again — see finishTopicSession/renderTopicSessionSummary.
-function startTopicSession(subject, topicId){
-  currentSubject = subject;
-  primerAcknowledged = {};
-  currentRound = buildTopicSession(subject, topicId);
-  currentRoundMode = "practice";
-  currentIndex = 0;
-  roundResults = [];
-  renderQuestion();
-}
-
-function renderPrimer(q){
-  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
-  app.innerHTML = `
-    <div class="card">
-      <button class="back-link" onclick="renderHome()">Exit</button>
-      <span class="qtag">${topicName}</span>
-      <p class="primer-text">📖 ${q.primer}</p>
-      <button class="next-btn" onclick="acknowledgePrimer()">I've read it — let's go!</button>
-    </div>`;
-}
-function acknowledgePrimer(){
-  primerAcknowledged[currentRound[currentIndex].topicId] = true;
-  renderQuestion();
-}
-
-function renderQuestion(){
-  const q = currentRound[currentIndex];
-  if(q.primer && !primerAcknowledged[q.topicId]){ renderPrimer(q); return; }
-  const total = currentRound.length;
-  const dots = currentRound.map((_,i)=>{
-    let cls = "progress-dot";
-    if(i < currentIndex) cls += " done";
-    else if(i === currentIndex) cls += " current";
-    return `<div class="${cls}"></div>`;
-  }).join("");
-  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
-  app.innerHTML = `
-    <div class="card">
-      <button class="back-link" onclick="renderHome()">Exit</button>
-      <div class="progress-strip">${dots}</div>
-      <span class="qtag${currentRoundMode==='bonus'?' bonus':''}">${currentRoundMode==='bonus'?'Bonus · ':''}${topicName} · Q${currentIndex+1} of ${total}</span>
-      <p class="question">${q.q}</p>
-      <div class="options" id="options">
-        ${q.options.map((opt,i)=>`<button class="opt" data-i="${i}" onclick="answer(${i})">${opt}</button>`).join("")}
-      </div>
-      <div id="feedbackZone"></div>
-    </div>`;
-}
-
-function answer(i){
-  const q = currentRound[currentIndex];
-  const wasCorrect = i === q.correctIndex;
-  document.querySelectorAll(".opt").forEach((btn,idx)=>{
-    btn.onclick = null;
-    if(idx === q.correctIndex) btn.classList.add("correct");
-    else if(idx === i) btn.classList.add("incorrect");
-  });
-  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
-  // History still levels per-question (recordAnswer, unchanged). Math/English
-  // now level via whole SESSIONS (finishTopicSession, called once at the end
-  // in renderSummary) — so per-question we just track the answer, no tier
-  // change happens here for those two subjects.
-  let leveledUp = false, leveledDown = false;
-  if(CURRICULUM[currentSubject].isReading){
-    const result = recordAnswer(currentSubject, q.topicId, wasCorrect, currentRoundMode === "bonus");
-    leveledUp = result.leveledUp; leveledDown = result.leveledDown;
-  }
-  roundResults.push({
-    topicId:q.topicId, topicName, correct:wasCorrect,
-    question:q.q, explain:q.explain, leveledUp, leveledDown
-  });
-  const fb = document.getElementById("feedbackZone");
-  const levelNote = leveledUp
-    ? `<div class="explain" style="color:#16a34a; font-weight:600;">⬆ Leveled up in ${topicName} — two correct in a row at this level!</div>`
-    : "";
-  fb.innerHTML = `
-    <div class="feedback ${wasCorrect?"good":"bad"}">${wasCorrect?"Nice one! ✅":"Not quite — here's why:"}</div>
-    <div class="explain">${q.explain}</div>
-    ${levelNote}
-    <button class="next-btn" onclick="nextQuestion()">${currentIndex+1 < currentRound.length ? "Next question" : "See results"}</button>`;
-}
-
-function nextQuestion(){
-  currentIndex++;
-  if(currentIndex >= currentRound.length){ renderSummary(); return; }
-  renderQuestion();
-}
-
-function renderSummary(){
-  if(!CURRICULUM[currentSubject].isReading){ renderTopicSessionSummary(); return; }
-  const correctCount = roundResults.filter(r=>r.correct).length;
-  const total = roundResults.length;
-  const pct = Math.round((correctCount/total)*100);
-  const emoji = pct >= 80 ? "🏆" : pct >= 50 ? "👍" : "💪";
-
-  // Group this round's misses by topic so we can tell him exactly what to
-  // focus on and why — using the real explanation from the question he got
-  // wrong, not just a generic "practice more" message.
-  const missesByTopic = {};
-  for(const r of roundResults){
-    if(r.correct) continue;
-    if(!missesByTopic[r.topicId]) missesByTopic[r.topicId] = { topicName:r.topicName, items:[] };
-    missesByTopic[r.topicId].items.push(r);
-  }
-  const missTopics = Object.values(missesByTopic);
-  const missTopicIds = Object.keys(missesByTopic);
-  const leveledUpTopics = [...new Set(roundResults.filter(r=>r.leveledUp).map(r=>r.topicName))];
-
-  let focusHTML = "";
-  if(missTopics.length === 0){
-    focusHTML = `<div class="summary-stat" style="border:none;"><span style="color:#16a34a; font-weight:600;">Perfect round — no gaps to flag. 🎉</span></div>`;
-  } else {
-    focusHTML = missTopics.map(m => `
-      <div class="summary-stat" style="display:block;">
-        <div class="topic-name">${m.topicName} <span style="color:#64748b; font-weight:400;">— missed ${m.items.length}</span></div>
-        <div class="explain" style="margin-top:2px;">${m.items[0].explain}</div>
-      </div>`).join("");
-  }
-  const levelUpHTML = leveledUpTopics.length
-    ? `<p class="explain" style="margin-top:10px;">⬆ Leveled up this round in: <strong>${leveledUpTopics.join(", ")}</strong></p>`
-    : "";
-
-  // Year-advance celebration: only for subjects with yearForTier (math/english).
-  // Compares the subject-wide year at round start vs now, so it only fires
-  // when the WHOLE subject crosses into a new year, not just one topic.
-  const yearAfterRound = subjectYear(currentSubject);
-  const yearBannerHTML = (yearBeforeRound !== null && yearAfterRound !== null && yearAfterRound > yearBeforeRound)
-    ? `<div class="year-banner">🎓 Amazing work — moving into Year ${yearAfterRound} for ${CURRICULUM[currentSubject].label}!</div>`
-    : "";
-
-  const bonusBtnHTML = (currentRoundMode === "normal" && missTopicIds.length > 0)
-    ? `<button class="bonus-btn" onclick='startRound("${currentSubject}", ${JSON.stringify(missTopicIds)})'>🎯 Bonus round: focus on tricky topics</button>`
-    : "";
-
-  app.innerHTML = `
-    <div class="card">
-      <div class="big-emoji">${emoji}</div>
-      <h1 style="text-align:center;">${correctCount} / ${total} correct</h1>
-      <p class="subtitle" style="text-align:center;">${currentRoundMode==='bonus' ? 'Bonus round complete.' : CURRICULUM[currentSubject].label + ' round complete.'}</p>
-      ${yearBannerHTML}
-      ${levelUpHTML}
-      <h1 style="font-size:1.05rem; margin-top:18px;">Focus on next time</h1>
-      ${focusHTML}
-      <p class="footer-note" style="margin-top:12px;">${missTopics.length ? "These stay at the same level until solid — use the bonus round below for focused extra practice." : ""}</p>
-      ${bonusBtnHTML}
-      <button class="next-btn" onclick="startRound('${currentSubject}')">Play another round</button>
-      <button class="dashboard-btn" onclick="renderDashboard()">View progress</button>
-      <button class="back-link" style="margin-top:10px;" onclick="renderHome()">Home</button>
-    </div>`;
-}
-
-// Math/English summary for a single-topic focused session (practice OR the
-// Level-Up Round). Calls finishTopicSession exactly once, here, at the end
-// of the 10 questions — this is the ONLY place Math/English tier changes
-// happen now (see the big comment above finishTopicSession for why).
-function renderTopicSessionSummary(){
-  const subject = currentSubject;
-  const topicId = currentRound[0].topicId;
-  const cfg = CURRICULUM[subject];
-  const topicName = cfg.topics.find(t=>t.id===topicId).name;
-  const correctCount = roundResults.filter(r=>r.correct).length;
-  const total = roundResults.length;
-  const pct = Math.round((correctCount/total)*100);
-  const emoji = pct === 100 ? "🏆" : pct >= 50 ? "👍" : "💪";
-  const yearBefore = subjectYear(subject);
-
-  const result = finishTopicSession(subject, topicId, correctCount, total);
-
-  const yearAfter = subjectYear(subject);
-  const yearBannerHTML = (yearAfter > yearBefore)
-    ? `<div class="year-banner">🎓 Amazing work — moving into Year ${yearAfter} for ${cfg.label}!</div>`
-    : "";
-
-  const statusHTML = result.passed
-    ? `<div class="year-banner">🎉 Perfect 10/10 — ${topicName} levels up to <strong>${cfg.tierLabels[result.tierAfter]}</strong>!</div>`
-    : `<p class="explain" style="margin-top:10px;">${correctCount}/10 this time — needs a perfect 10/10 to advance. No penalty: try again whenever you're ready, with all-new questions.</p>`;
-
-  const missed = roundResults.filter(r=>!r.correct);
-  const missedHTML = missed.length
-    ? missed.slice(0,3).map(m=>`<div class="summary-stat" style="display:block;"><div class="explain">${m.explain}</div></div>`).join("")
-    : `<div class="summary-stat" style="border:none;"><span style="color:#16a34a; font-weight:600;">Perfect session! 🎉</span></div>`;
-
-  app.innerHTML = `
-    <div class="card">
-      <div class="big-emoji">${emoji}</div>
-      <h1 style="text-align:center;">${correctCount} / ${total} correct</h1>
-      <p class="subtitle" style="text-align:center;">${topicName} — practice session complete.</p>
-      ${yearBannerHTML}
-      ${statusHTML}
-      <h1 style="font-size:1.05rem; margin-top:18px;">What to review</h1>
-      ${missedHTML}
-      <button class="next-btn" onclick="startTopicSession('${subject}','${topicId}')">Practice again</button>
-      <button class="dashboard-btn" onclick="renderTopicSelect('${subject}')">Back to ${cfg.label} topics</button>
+      <button class="next-btn" onclick="startAdaptiveSession('${currentSubject}')">Practice ${cfg.label} again</button>
+      <button class="dashboard-btn" onclick="renderSubjectHub('${currentSubject}')">Back to ${cfg.label}</button>
       <button class="back-link" style="margin-top:10px;" onclick="renderHome()">Home</button>
     </div>`;
 }
@@ -2387,34 +1962,25 @@ function renderDashboard(){
       ? `<p class="subject-summary">Currently working in: <strong>Year ${year}</strong></p>`
       : `<p class="subject-summary">Reading-based — depth grows as topics are mastered.</p>`;
     const rows = cfg.topics.map(t=>{
-      const s = STATE[subject].topics[t.id];
-      if(subject === "math"){
-        // Math: surface the adaptive learner model directly — mastery,
-        // confidence (evidence volume, kept independent per the spec),
-        // memory freshness, and any recurring misconception pattern —
-        // rather than the old single tier-badge + accuracy% view.
-        const tier = currentDisplayTier(subject, t.id);
-        const concept = s.concepts[tier] || defaultConceptState();
-        const rs = concept.lastSeenAt ? Math.round(retrievalStrengthNow(concept)*100) : null;
-        const dueTag = (rs !== null && rs < REVIEW_DUE_THRESHOLD*100)
-          ? ` <span style="color:#d97706; font-weight:700;">· due for review</span>` : "";
-        const topMisconception = Object.entries(concept.misconceptions||{}).sort((a,b)=>b[1]-a[1])[0];
-        const misconceptionLine = topMisconception
-          ? `<div class="explain">Recurring pattern: ${topMisconception[0]} (${topMisconception[1]}×)</div>` : "";
-        return `<div class="summary-stat" style="display:block;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="topic-name">${t.name}${dueTag}</span>
-            <span class="tier-badge t${tier % 4}">${cfg.tierLabels[tier]}</span>
-          </div>
-          <div class="explain">Mastery ${Math.round(concept.mastery*100)}% · confidence ${Math.round(concept.confidence*100)}%${rs!==null ? ` · memory freshness ${rs}%` : ""}</div>
-          ${misconceptionLine}
-        </div>`;
-      }
-      const acc = s.attempts ? Math.round((s.correct/s.attempts)*100) : null;
-      const gapTag = s.needsReview ? ` <span style="color:#d97706; font-weight:700;">· needs 100% to advance</span>` : "";
-      return `<div class="summary-stat">
-        <span class="topic-name">${t.name}${gapTag}</span>
-        <span><span class="tier-badge t${s.tier % 4}">${cfg.tierLabels[s.tier]}</span> ${acc!==null?` · ${acc}%`:""}</span>
+      // All three subjects now surface the adaptive learner model directly —
+      // mastery, confidence (evidence volume, kept independent per the
+      // spec), memory freshness, and any recurring misconception pattern —
+      // rather than the old single tier-badge + accuracy% view.
+      const tier = currentDisplayTier(subject, t.id);
+      const concept = STATE[subject].topics[t.id].concepts[tier] || defaultConceptState();
+      const rs = concept.lastSeenAt ? Math.round(retrievalStrengthNow(concept)*100) : null;
+      const dueTag = (rs !== null && rs < REVIEW_DUE_THRESHOLD*100)
+        ? ` <span style="color:#d97706; font-weight:700;">· due for review</span>` : "";
+      const topMisconception = Object.entries(concept.misconceptions||{}).sort((a,b)=>b[1]-a[1])[0];
+      const misconceptionLine = topMisconception
+        ? `<div class="explain">Recurring pattern: ${topMisconception[0]} (${topMisconception[1]}×)</div>` : "";
+      return `<div class="summary-stat" style="display:block;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="topic-name">${t.name}${dueTag}</span>
+          <span class="tier-badge t${tier % 4}">${cfg.tierLabels[tier]}</span>
+        </div>
+        <div class="explain">Mastery ${Math.round(concept.mastery*100)}% · confidence ${Math.round(concept.confidence*100)}%${rs!==null ? ` · memory freshness ${rs}%` : ""}</div>
+        ${misconceptionLine}
       </div>`;
     }).join("");
     return `<h1 style="font-size:1.1rem; margin-top:18px;">${cfg.icon} ${cfg.label}</h1>${summaryLine}${rows}`;
@@ -2429,15 +1995,9 @@ function renderDashboard(){
 }
 
 // Expose functions used by inline onclick handlers
-window.startRound = startRound;
-window.answer = answer;
-window.nextQuestion = nextQuestion;
-window.acknowledgePrimer = acknowledgePrimer;
 window.renderHome = renderHome;
 window.renderDashboard = renderDashboard;
-window.renderTopicSelect = renderTopicSelect;
-window.startTopicSession = startTopicSession;
-window.renderMathHub = renderMathHub;
+window.renderSubjectHub = renderSubjectHub;
 window.startAdaptiveSession = startAdaptiveSession;
 
 renderHome();
