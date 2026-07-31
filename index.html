@@ -1753,12 +1753,23 @@ const ZPD_TARGET = 0.775;        // aim for the middle of a 70-85% success band
 const REVIEW_DUE_THRESHOLD = 0.6; // retrieval strength below this = due for review
 const ADAPTIVE_SESSION_LENGTH = 10;
 const MAX_CONSECUTIVE_SAME_TOPIC = 2;
+// Per JC: topics he's behind on (relative to his OWN most-advanced Math
+// topic) should get more question time than topics he's already ahead in —
+// closing gaps takes priority over racing ahead on his strongest topic.
+// Weight is per tier of gap behind the frontier; capped implicitly since
+// tier gaps max out at 8 (the tier ceiling).
+const CATCH_UP_WEIGHT = 0.18;
+
+function frontierTier(subject){
+  return Math.max(...CURRICULUM[subject].topics.map(t => currentDisplayTier(subject, t.id)));
+}
 
 // Combines: how overdue for review (spaced repetition), how close to the
-// ZPD sweet spot (neither trivial nor frustrating), a small staleness bonus
-// so every topic still gets covered eventually, and a penalty if a
+// ZPD sweet spot (neither trivial nor frustrating), a catch-up bonus for
+// topics lagging behind his own most-advanced Math topic, a small staleness
+// bonus so every topic still gets covered eventually, and a penalty if a
 // prerequisite topic isn't ready yet (Knowledge Graph gate).
-function topicPriorityScore(subject, topicId, focusTopicId){
+function topicPriorityScore(subject, topicId, focusTopicId, frontier){
   const activeTier = currentDisplayTier(subject, topicId);
   const concept = STATE[subject].topics[topicId].concepts[activeTier] || defaultConceptState();
   const rs = retrievalStrengthNow(concept);
@@ -1768,7 +1779,8 @@ function topicPriorityScore(subject, topicId, focusTopicId){
   const readinessPenalty = prerequisitesReady(topicId) ? 0 : 0.6;
   const stalenessBonus = Math.min(0.3, (STATE[subject].topics[topicId].roundsSince||0) * 0.05);
   const focusBonus = (focusTopicId && topicId === focusTopicId) ? 1.5 : 0;
-  return Math.max(0.05, dueScore + zpdScore + stalenessBonus + focusBonus - readinessPenalty);
+  const catchUpBonus = frontier != null ? Math.max(0, frontier - activeTier) * CATCH_UP_WEIGHT : 0;
+  return Math.max(0.05, dueScore + zpdScore + stalenessBonus + catchUpBonus + focusBonus - readinessPenalty);
 }
 
 function questionForConceptTier(subject, topicId, tier, usedTexts){
@@ -1799,8 +1811,12 @@ function buildAdaptiveMathSession(subject, focusTopicId){
   const usedTexts = new Set();
   const out = [];
   let lastTopic = null, lastTopicStreak = 0;
+  // Computed once per session build, not per slot: tiers don't move mid-build
+  // (they only change once an answer is actually recorded), so re-deriving
+  // this on every one of the 10 picks would just be wasted work.
+  const frontier = frontierTier(subject);
   for(let i=0;i<ADAPTIVE_SESSION_LENGTH;i++){
-    let scored = topics.map(id => ({id, score: topicPriorityScore(subject, id, focusTopicId)}));
+    let scored = topics.map(id => ({id, score: topicPriorityScore(subject, id, focusTopicId, frontier)}));
     if(lastTopic && lastTopicStreak >= MAX_CONSECUTIVE_SAME_TOPIC){
       scored = scored.filter(s => s.id !== lastTopic);
     }
@@ -1964,6 +1980,7 @@ function renderTopicSelect(subject){
 // see buildAdaptiveMathSession's focusTopicId bias.
 function renderMathHub(){
   const cfg = CURRICULUM.math;
+  const frontier = frontierTier("math");
   const rows = cfg.topics.map(t=>{
     const tier = currentDisplayTier("math", t.id);
     const concept = STATE.math.topics[t.id].concepts[tier] || defaultConceptState();
@@ -1971,9 +1988,14 @@ function renderMathHub(){
     const masteryPct = Math.round(concept.mastery*100);
     const dueTag = rs < REVIEW_DUE_THRESHOLD*100 && concept.lastSeenAt
       ? ` <span style="color:#d97706; font-weight:700;">· due for review</span>` : "";
+    // Behind his OWN most-advanced Math topic — Practice Math sessions give
+    // this extra weight until it catches up, per JC's request to prioritize
+    // closing gaps over racing ahead on his strongest topic.
+    const behindTag = tier < frontier
+      ? ` <span style="color:#2563eb; font-weight:700;">· catching up</span>` : "";
     return `<div class="summary-stat" style="display:block;">
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="topic-name">${t.name}${dueTag}</span>
+        <span class="topic-name">${t.name}${dueTag}${behindTag}</span>
         <span class="tier-badge t${tier % 4}">${cfg.tierLabels[tier]}</span>
       </div>
       <div class="explain">Mastery ${masteryPct}% · memory freshness ${concept.lastSeenAt ? rs+"%" : "not started"}</div>
@@ -1984,7 +2006,7 @@ function renderMathHub(){
     <div class="card">
       <button class="back-link" onclick="renderHome()">Home</button>
       <h1>${cfg.icon} Math</h1>
-      <p class="subject-summary">A mixed, adaptive session — whatever's due for review or in the right challenge zone comes up, across topics.</p>
+      <p class="subject-summary">A mixed, adaptive session — topics he's behind on get extra focus, plus whatever's due for review or in the right challenge zone.</p>
       <button class="next-btn" onclick="startAdaptiveSession('math')">🎯 Practice Math</button>
       <h1 style="font-size:1.05rem; margin-top:18px;">Or focus on one topic</h1>
       ${rows}
