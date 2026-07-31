@@ -1203,8 +1203,12 @@ function defaultTopicState(){
   // (not capped like recentQuestions). Cleared only when the tier actually
   // changes, so a retry of a module never repeats a question from an
   // earlier attempt at the same level — see questionForTopic below.
+  // concepts: Math-only (as of the adaptive-learner-model pilot below) — a
+  // per-tier learner model keyed by tier number, holding independent
+  // mastery/confidence/retrieval-strength estimates. Empty/unused for
+  // English and History, which still use the flat tier/streak fields above.
   return { tier:0, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0,
-    recentQuestions:[], seenAtTier:[] };
+    recentQuestions:[], seenAtTier:[], concepts:{} };
 }
 function defaultState(){
   const s = { history:[], updatedAt:0 };
@@ -1236,6 +1240,7 @@ function migrateState(s){
       if(existing.roundsSince === undefined) existing.roundsSince = 0;
       if(!Array.isArray(existing.recentQuestions)) existing.recentQuestions = [];
       if(!Array.isArray(existing.seenAtTier)) existing.seenAtTier = [];
+      if(!existing.concepts || typeof existing.concepts !== "object") existing.concepts = {};
       // Older saves (pre-100%-rule) had sessionHistory/readyForBonus fields
       // for the retired 3-session/95%-aggregate gate — no longer used, drop
       // them if present rather than carrying dead state forward.
@@ -1255,6 +1260,20 @@ function migrateState(s){
         existing.tier = OLD_TO_NEW_TIER[Math.min(existing.tier,3)];
         existing._migratedTierScale = "v9";
         existing.seenAtTier = [];
+      }
+      // One-time seed of the new per-tier concept model (Math only) from the
+      // old flat tier scalar: tiers below the old tier get a high mastery
+      // prior (he'd already advanced past them under the old rule), the
+      // current tier and above start low (not yet demonstrated under the new
+      // model) — so switching models doesn't wipe or artificially inflate
+      // progress. Guarded so it only ever runs once per save.
+      if(subj === "math" && existing._migratedToConceptModel !== "v1"){
+        const maxTier = CURRICULUM.math.yearForTier.length - 1;
+        for(let t=0; t<=maxTier; t++){
+          existing.concepts[t] = defaultConceptState();
+          existing.concepts[t].mastery = t < existing.tier ? 0.85 : 0.15;
+        }
+        existing._migratedToConceptModel = "v1";
       }
     }
   }
@@ -1473,7 +1492,12 @@ function recordAnswer(subject, topicId, wasCorrect, isBonus){
 function subjectYear(subject){
   const cfg = CURRICULUM[subject];
   if(!cfg.yearForTier) return null;
-  const tiers = cfg.topics.map(t => STATE[subject].topics[t.id].tier);
+  // Math reads its per-tier concept model (currentDisplayTier), since the
+  // adaptive Tutor Engine no longer writes the old flat `tier` field —
+  // everything else still reads the flat field directly.
+  const tiers = cfg.topics.map(t => subject === "math"
+    ? currentDisplayTier(subject, t.id)
+    : STATE[subject].topics[t.id].tier);
   return Math.min(...tiers.map(t => cfg.yearForTier[t]));
 }
 
@@ -1531,6 +1555,266 @@ function finishTopicSession(subject, topicId, correctCount, totalCount){
   }
   saveState(STATE);
   return { tierBefore, tierAfter:t.tier, passed };
+}
+
+/* ---------------------------------------------------------------------
+   5c. ADAPTIVE LEARNER MODEL — MATH PILOT
+   Per the Adaptive Tutor Design Specification: mastery is never a one-time
+   event. Each Math topic is broken into per-tier "concepts" (topicId+tier),
+   each independently tracked across several axes: mastery (belief the
+   underlying skill is learned), confidence (how much evidence backs that
+   belief — deliberately separate from mastery), retrieval strength /
+   forgetting risk (a decaying memory-freshness estimate), misconceptions
+   (recurring wrong-answer patterns), hint usage, response time, and a
+   capped review history. Nothing here is English/History-facing; those two
+   subjects are untouched and keep the tier/streak model above.
+
+   Architecture, mapped to the spec's named systems:
+     - Knowledge Graph  -> MATH_PREREQUISITES + prerequisitesReady()
+     - Learner Model    -> defaultConceptState/bktUpdate/updateConcept
+     - Review Engine    -> retrievalStrengthNow/forgettingRisk (spaced rep.)
+     - Tutor Engine      -> topicPriorityScore/buildAdaptiveMathSession
+     - Assessment Engine -> questionForConceptTier + the answerAdaptive UI fn
+   Kept as plain functions over the existing STATE object (no framework/
+   build step) so the app stays a single deployable static file.
+   --------------------------------------------------------------------- */
+
+// ---- Knowledge Graph: which Math topics lean on which others ----
+// Used to avoid pushing a topic's next tier when a prerequisite is itself
+// shaky — practicing "Fractions" tier 4 when "Place Value" is still weak
+// just produces confused guessing, not learning.
+const MATH_PREREQUISITES = {
+  place_value: [],
+  add_sub:     ["place_value"],
+  mult_div:    ["add_sub"],
+  fractions:   ["place_value", "mult_div"],
+  measurement: ["add_sub"],
+  geometry:    [],
+  statistics:  ["add_sub"],
+  reasoning:   ["add_sub", "mult_div"],
+};
+
+// ---- Bayesian Knowledge Tracing parameters ----
+// pSlip: chance of a mistake despite having learned the skill.
+// pGuess: chance of a correct answer despite NOT having learned it (a real
+//   possibility with 4-option multiple choice).
+// pTransit: chance any single attempt causes new learning to "stick".
+// These are deliberately simple, fixed defaults rather than per-topic-tuned
+// values — a reasonable starting point, and an obvious place to specialize
+// later if particular topics prove to guess/slip at different rates.
+const BKT = { pSlip: 0.10, pGuess: 0.25, pTransit: 0.15 };
+const MS_PER_DAY = 86400000;
+
+function defaultConceptState(){
+  return {
+    mastery: 0.1,        // P(learned), 0-1 — updated only by new evidence
+    confidence: 0,       // evidence volume, 0-1 — independent of mastery
+    stability: 1,        // memory "half-life" in days, grows with spaced success
+    lastSeenAt: null,
+    attempts: 0,
+    correct: 0,
+    hintUses: 0,
+    responseTimes: [],   // capped rolling list, ms
+    misconceptions: {},  // tag -> count
+    seenTexts: [],        // capped anti-repeat memory, like the old seenAtTier
+    reviewHistory: [],    // capped rolling list of {t, correct, hintUsed, responseTimeMs, misconception}
+  };
+}
+
+// Standard BKT posterior update given one observed answer, then applies the
+// "transit" chance of new learning. If a hint was used, the observation is
+// blended halfway back toward the prior — a hinted correct answer is real
+// but weaker evidence of UNAIDED mastery than an unhinted one.
+function bktUpdate(mastery, wasCorrect, hintUsed){
+  const {pSlip, pGuess, pTransit} = BKT;
+  let posterior = wasCorrect
+    ? (mastery*(1-pSlip)) / (mastery*(1-pSlip) + (1-mastery)*pGuess)
+    : (mastery*pSlip) / (mastery*pSlip + (1-mastery)*(1-pGuess));
+  if(hintUsed) posterior = (posterior + mastery) / 2;
+  const updated = posterior + (1-posterior)*pTransit;
+  return Math.min(0.99, Math.max(0.01, updated));
+}
+
+// Predicted probability of a correct answer right now, given mastery —
+// used to target the 70-85% "productive struggle" zone (Zone of Proximal
+// Development) rather than either trivial or frustrating content.
+function predictedSuccess(concept){
+  return concept.mastery*(1-BKT.pSlip) + (1-concept.mastery)*BKT.pGuess;
+}
+
+// How fresh this concept's memory is right now (1 = just practiced, decaying
+// toward 0 the longer it's been). Deliberately NOT folded into `mastery`
+// itself — mastery is a belief that only changes on new evidence; retrieval
+// strength is a separate, purely time-based axis that drives what resurfaces
+// for review. A concept can be well-mastered AND overdue for review at once.
+function retrievalStrengthNow(concept, now){
+  now = now || Date.now();
+  if(!concept.lastSeenAt) return 0;
+  const daysSince = (now - concept.lastSeenAt) / MS_PER_DAY;
+  return Math.exp(-daysSince / Math.max(concept.stability, 0.5));
+}
+function forgettingRisk(concept, now){
+  return 1 - retrievalStrengthNow(concept, now);
+}
+// Successfully recalling something after a longer gap is stronger evidence
+// of durable learning than instant re-drill, so it grows stability faster.
+// A miss resets stability sharply (durable memory needs re-establishing).
+function updateStability(concept, wasCorrect, now){
+  const daysSince = concept.lastSeenAt ? (now - concept.lastSeenAt) / MS_PER_DAY : 0;
+  if(wasCorrect){
+    const gapBonus = Math.min(2.5, 1 + daysSince);
+    concept.stability = Math.min(60, concept.stability * gapBonus);
+  } else {
+    concept.stability = Math.max(0.5, concept.stability * 0.5);
+  }
+}
+
+// Evidence-volume confidence: how MUCH we know, not how WELL he's doing.
+// Saturates toward 1 as attempts accumulate; deliberately does not consider
+// correctness at all, so mastery and confidence can never be conflated (a
+// couple of lucky guesses raises mastery slightly, per BKT, but confidence
+// stays low until there's a real track record).
+function confidenceFromAttempts(attempts){
+  const K = 8; // ~0.5 confidence after 8 attempts at this concept
+  return attempts / (attempts + K);
+}
+
+// Heuristic misconception tagging. Works purely off the numbers involved
+// (no per-generator authoring needed), so it's necessarily limited — it can
+// spot "off by ten/hundred" (place-value slips) and "off by one" (counting
+// slips) patterns, but can't yet detect true operation-confusion (e.g.
+// subtracted instead of added) without generators exposing their operands,
+// which none currently do. Flagged here as a known limitation, not silently
+// pretended away.
+function classifyMisconception(correctVal, chosenVal){
+  const cNum = parseFloat(String(correctVal).replace(/[^0-9.\-]/g,""));
+  const xNum = parseFloat(String(chosenVal).replace(/[^0-9.\-]/g,""));
+  if(isNaN(cNum) || isNaN(xNum)) return "conceptual";
+  const diff = xNum - cNum;
+  if(Math.abs(diff) === 100) return "place-value (off by hundred)";
+  if(Math.abs(diff) === 10) return "place-value (off by ten)";
+  if(Math.abs(diff) === 1) return "off-by-one (counting slip)";
+  return "conceptual";
+}
+
+// The single entry point that records one answer's worth of evidence for a
+// Math concept, updating every axis at once, then persists (and syncs).
+function updateConcept(subject, topicId, tier, {wasCorrect, hintUsed, responseTimeMs, misconceptionTag}){
+  const topicState = STATE[subject].topics[topicId];
+  if(!topicState.concepts[tier]) topicState.concepts[tier] = defaultConceptState();
+  const c = topicState.concepts[tier];
+  const now = Date.now();
+  updateStability(c, wasCorrect, now);
+  c.mastery = bktUpdate(c.mastery, wasCorrect, hintUsed);
+  c.attempts++;
+  if(wasCorrect) c.correct++;
+  if(hintUsed) c.hintUses++;
+  c.lastSeenAt = now;
+  c.confidence = confidenceFromAttempts(c.attempts);
+  if(responseTimeMs != null){
+    c.responseTimes.push(responseTimeMs);
+    if(c.responseTimes.length > 20) c.responseTimes.shift();
+  }
+  if(!wasCorrect && misconceptionTag){
+    c.misconceptions[misconceptionTag] = (c.misconceptions[misconceptionTag]||0) + 1;
+  }
+  c.reviewHistory.push({t:now, correct:wasCorrect, hintUsed:!!hintUsed, responseTimeMs:responseTimeMs||null, misconception:misconceptionTag||null});
+  if(c.reviewHistory.length > 50) c.reviewHistory.shift();
+  // Also bump the legacy attempts/correct counters so anything still reading
+  // them (e.g. a shared summary line) stays numerically sane.
+  topicState.attempts++;
+  if(wasCorrect) topicState.correct++;
+  saveState(STATE);
+  return c;
+}
+
+function masteryAtTier(subject, topicId, tier){
+  const c = STATE[subject].topics[topicId].concepts[tier];
+  return c ? c.mastery : 0.1;
+}
+// The tier displayed as "current level" — the first tier, scanning up from
+// 0, that ISN'T yet solidly mastered (mastery >= 0.8). Deliberately computed
+// fresh every time rather than stored as its own counter, so it can only
+// ever reflect actual evidence in the concept model — no separate "tier"
+// value to drift out of sync with the mastery data behind it.
+function currentDisplayTier(subject, topicId){
+  const maxTier = CURRICULUM[subject].yearForTier.length - 1;
+  let tier = 0;
+  while(tier < maxTier && masteryAtTier(subject, topicId, tier) >= 0.8) tier++;
+  return tier;
+}
+function prerequisitesReady(topicId){
+  const prereqs = MATH_PREREQUISITES[topicId] || [];
+  return prereqs.every(pId => masteryAtTier("math", pId, currentDisplayTier("math", pId)) >= 0.5);
+}
+
+// ---- Review Engine + Tutor Engine ----
+const ZPD_TARGET = 0.775;        // aim for the middle of a 70-85% success band
+const REVIEW_DUE_THRESHOLD = 0.6; // retrieval strength below this = due for review
+const ADAPTIVE_SESSION_LENGTH = 10;
+const MAX_CONSECUTIVE_SAME_TOPIC = 2;
+
+// Combines: how overdue for review (spaced repetition), how close to the
+// ZPD sweet spot (neither trivial nor frustrating), a small staleness bonus
+// so every topic still gets covered eventually, and a penalty if a
+// prerequisite topic isn't ready yet (Knowledge Graph gate).
+function topicPriorityScore(subject, topicId, focusTopicId){
+  const activeTier = currentDisplayTier(subject, topicId);
+  const concept = STATE[subject].topics[topicId].concepts[activeTier] || defaultConceptState();
+  const rs = retrievalStrengthNow(concept);
+  const dueScore = Math.max(0, REVIEW_DUE_THRESHOLD - rs) * 2;
+  const predicted = predictedSuccess(concept);
+  const zpdScore = 1 - Math.min(1, Math.abs(predicted - ZPD_TARGET) / 0.3);
+  const readinessPenalty = prerequisitesReady(topicId) ? 0 : 0.6;
+  const stalenessBonus = Math.min(0.3, (STATE[subject].topics[topicId].roundsSince||0) * 0.05);
+  const focusBonus = (focusTopicId && topicId === focusTopicId) ? 1.5 : 0;
+  return Math.max(0.05, dueScore + zpdScore + stalenessBonus + focusBonus - readinessPenalty);
+}
+
+function questionForConceptTier(subject, topicId, tier, usedTexts){
+  const topicState = STATE[subject].topics[topicId];
+  if(!topicState.concepts[tier]) topicState.concepts[tier] = defaultConceptState();
+  const concept = topicState.concepts[tier];
+  const gens = G[subject][topicId];
+  const seen = new Set(concept.seenTexts || []);
+  let q, attempts = 0;
+  do { q = gens[Math.min(tier, gens.length-1)](); attempts++; }
+  while((usedTexts.has(q.q) || seen.has(q.q)) && attempts < 60);
+  usedTexts.add(q.q);
+  if(!concept.seenTexts.includes(q.q)) concept.seenTexts.push(q.q);
+  if(concept.seenTexts.length > 40) concept.seenTexts.shift();
+  return { topicId, tier, ...q };
+}
+
+// Builds one interleaved, adaptive Math session: each of the 10 slots
+// re-scores every topic (so priorities can shift mid-session), then picks
+// a weighted-random topic from the top few candidates — never fully greedy
+// (sessions would feel robotic) and never allowing more than
+// MAX_CONSECUTIVE_SAME_TOPIC in a row (interleaving, per the spec's
+// "mixed practice over blocked practice" principle). An optional
+// focusTopicId (manual "focus on this topic" choice) biases selection
+// toward one topic without abandoning interleaving entirely.
+function buildAdaptiveMathSession(subject, focusTopicId){
+  const topics = CURRICULUM[subject].topics.map(t=>t.id);
+  const usedTexts = new Set();
+  const out = [];
+  let lastTopic = null, lastTopicStreak = 0;
+  for(let i=0;i<ADAPTIVE_SESSION_LENGTH;i++){
+    let scored = topics.map(id => ({id, score: topicPriorityScore(subject, id, focusTopicId)}));
+    if(lastTopic && lastTopicStreak >= MAX_CONSECUTIVE_SAME_TOPIC){
+      scored = scored.filter(s => s.id !== lastTopic);
+    }
+    scored.sort((a,b)=>b.score-a.score);
+    const pool = scored.slice(0, 3);
+    const totalWeight = pool.reduce((sum,s)=>sum+s.score, 0);
+    let r = Math.random()*totalWeight, chosenId = pool[0].id;
+    for(const s of pool){ r -= s.score; if(r<=0){ chosenId = s.id; break; } }
+    const activeTier = currentDisplayTier(subject, chosenId);
+    out.push(questionForConceptTier(subject, chosenId, activeTier, usedTexts));
+    if(chosenId === lastTopic) lastTopicStreak++; else { lastTopic = chosenId; lastTopicStreak = 1; }
+  }
+  bumpRoundCounters(subject, [...new Set(out.map(q=>q.topicId))]);
+  return out;
 }
 
 /* ---------------------------------------------------------------------
@@ -1597,9 +1881,12 @@ function renderHome(){
   const subjectButtons = Object.keys(CURRICULUM).map((subj,i)=>{
     const cfg = CURRICULUM[subj];
     const wide = Object.keys(CURRICULUM).length % 2 === 1 && i === Object.keys(CURRICULUM).length-1;
-    // Math/English: pick a topic to practice first (topic-focused sessions).
+    // Math: routes to the new adaptive hub (Tutor Engine-driven interleaved
+    // sessions). English: unchanged, picks a topic then a focused 10Q module.
     // History: unchanged — starts its own multi-topic reading round directly.
-    const action = cfg.isReading ? `startRound('${subj}')` : `renderTopicSelect('${subj}')`;
+    const action = cfg.isReading ? `startRound('${subj}')`
+      : subj === "math" ? `renderMathHub()`
+      : `renderTopicSelect('${subj}')`;
     return `<button class="subject-btn ${subj}${wide?' full-width':''}" onclick="${action}">
       <span class="icon">${cfg.icon}</span> ${cfg.label}
     </button>`;
@@ -1665,6 +1952,166 @@ function renderTopicSelect(subject){
       <h1>${cfg.icon} ${cfg.label}</h1>
       <p class="subject-summary">Currently working in: <strong>Year ${year}</strong> — pick a topic to practice.</p>
       ${rows}
+    </div>`;
+}
+
+// ---- MATH HUB (adaptive learner-model pilot) ----
+// Replaces the old "pick a topic, do a fixed 10Q module" flow for Math with
+// a Tutor-Engine-driven session that interleaves whatever's due for review
+// or in the productive-struggle zone across topics. A per-topic "Focus on
+// this" option is kept for agency/navigation (useful with a 6-year-old who
+// likes to choose what he's working on) without abandoning interleaving —
+// see buildAdaptiveMathSession's focusTopicId bias.
+function renderMathHub(){
+  const cfg = CURRICULUM.math;
+  const rows = cfg.topics.map(t=>{
+    const tier = currentDisplayTier("math", t.id);
+    const concept = STATE.math.topics[t.id].concepts[tier] || defaultConceptState();
+    const rs = Math.round(retrievalStrengthNow(concept)*100);
+    const masteryPct = Math.round(concept.mastery*100);
+    const dueTag = rs < REVIEW_DUE_THRESHOLD*100 && concept.lastSeenAt
+      ? ` <span style="color:#d97706; font-weight:700;">· due for review</span>` : "";
+    return `<div class="summary-stat" style="display:block;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="topic-name">${t.name}${dueTag}</span>
+        <span class="tier-badge t${tier % 4}">${cfg.tierLabels[tier]}</span>
+      </div>
+      <div class="explain">Mastery ${masteryPct}% · memory freshness ${concept.lastSeenAt ? rs+"%" : "not started"}</div>
+      <button class="dashboard-btn" style="margin-top:8px;" onclick="startAdaptiveSession('math','${t.id}')">Focus on this</button>
+    </div>`;
+  }).join("");
+  app.innerHTML = `
+    <div class="card">
+      <button class="back-link" onclick="renderHome()">Home</button>
+      <h1>${cfg.icon} Math</h1>
+      <p class="subject-summary">A mixed, adaptive session — whatever's due for review or in the right challenge zone comes up, across topics.</p>
+      <button class="next-btn" onclick="startAdaptiveSession('math')">🎯 Practice Math</button>
+      <h1 style="font-size:1.05rem; margin-top:18px;">Or focus on one topic</h1>
+      ${rows}
+    </div>`;
+}
+
+let questionShownAt = null; // timestamp for response-time tracking (adaptive Math sessions only)
+let hintRevealed = false;
+
+function startAdaptiveSession(subject, focusTopicId){
+  currentSubject = subject;
+  currentRound = buildAdaptiveMathSession(subject, focusTopicId);
+  currentRoundMode = "adaptive";
+  currentIndex = 0;
+  roundResults = [];
+  renderAdaptiveQuestion();
+}
+
+function renderAdaptiveQuestion(){
+  const q = currentRound[currentIndex];
+  hintRevealed = false;
+  questionShownAt = Date.now();
+  const total = currentRound.length;
+  const dots = currentRound.map((_,i)=>{
+    let cls = "progress-dot";
+    if(i < currentIndex) cls += " done";
+    else if(i === currentIndex) cls += " current";
+    return `<div class="${cls}"></div>`;
+  }).join("");
+  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
+  app.innerHTML = `
+    <div class="card">
+      <button class="back-link" onclick="renderHome()">Exit</button>
+      <div class="progress-strip">${dots}</div>
+      <span class="qtag">${topicName} · Q${currentIndex+1} of ${total}</span>
+      <p class="question">${q.q}</p>
+      <div class="options" id="options">
+        ${q.options.map((opt,i)=>`<button class="opt" data-i="${i}" onclick="answerAdaptive(${i})">${opt}</button>`).join("")}
+      </div>
+      <div id="hintZone">
+        <button class="dashboard-btn" onclick="revealHint()">💡 Hint</button>
+      </div>
+      <div id="feedbackZone"></div>
+    </div>`;
+}
+
+// A lightweight hint: the first clause of the explanation, shown on request
+// rather than after answering. Tracked (hintRevealed) so the learner model
+// can discount the evidence value of a subsequent correct answer.
+function revealHint(){
+  const q = currentRound[currentIndex];
+  hintRevealed = true;
+  const hintText = q.explain.split(/[.,]/)[0];
+  const zone = document.getElementById("hintZone");
+  if(zone) zone.innerHTML = `<div class="explain">💡 ${hintText}...</div>`;
+}
+window.revealHint = revealHint;
+
+function answerAdaptive(i){
+  const q = currentRound[currentIndex];
+  const wasCorrect = i === q.correctIndex;
+  const responseTimeMs = questionShownAt ? Date.now() - questionShownAt : null;
+  document.querySelectorAll(".opt").forEach((btn,idx)=>{
+    btn.onclick = null;
+    if(idx === q.correctIndex) btn.classList.add("correct");
+    else if(idx === i) btn.classList.add("incorrect");
+  });
+  const misconceptionTag = wasCorrect ? null : classifyMisconception(q.options[q.correctIndex], q.options[i]);
+  const before = currentDisplayTier(currentSubject, q.topicId);
+  updateConcept(currentSubject, q.topicId, q.tier, {
+    wasCorrect, hintUsed: hintRevealed, responseTimeMs, misconceptionTag
+  });
+  const after = currentDisplayTier(currentSubject, q.topicId);
+  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
+  roundResults.push({
+    topicId:q.topicId, topicName, correct:wasCorrect, question:q.q, explain:q.explain,
+    leveledUp: after > before, misconceptionTag
+  });
+  const fb = document.getElementById("feedbackZone");
+  const levelNote = after > before
+    ? `<div class="explain" style="color:#16a34a; font-weight:600;">⬆ ${topicName} mastery moved up to ${CURRICULUM[currentSubject].tierLabels[after]}!</div>` : "";
+  fb.innerHTML = `
+    <div class="feedback ${wasCorrect?"good":"bad"}">${wasCorrect?"Nice one! ✅":"Not quite — here's why:"}</div>
+    <div class="explain">${q.explain}</div>
+    ${levelNote}
+    <button class="next-btn" onclick="nextAdaptiveQuestion()">${currentIndex+1 < currentRound.length ? "Next question" : "See results"}</button>`;
+}
+window.answerAdaptive = answerAdaptive;
+
+function nextAdaptiveQuestion(){
+  currentIndex++;
+  if(currentIndex >= currentRound.length){ renderAdaptiveSummary(); return; }
+  renderAdaptiveQuestion();
+}
+window.nextAdaptiveQuestion = nextAdaptiveQuestion;
+
+function renderAdaptiveSummary(){
+  const correctCount = roundResults.filter(r=>r.correct).length;
+  const total = roundResults.length;
+  const pct = Math.round((correctCount/total)*100);
+  const emoji = pct >= 80 ? "🏆" : pct >= 50 ? "👍" : "💪";
+  const leveledUpTopics = [...new Set(roundResults.filter(r=>r.leveledUp).map(r=>r.topicName))];
+  const levelUpHTML = leveledUpTopics.length
+    ? `<p class="explain" style="margin-top:10px;">⬆ Mastery moved up in: <strong>${leveledUpTopics.join(", ")}</strong></p>` : "";
+
+  // Surface recurring misconception patterns from THIS session in plain
+  // language, rather than just "missed 2" — this is the point of tracking
+  // them at all: telling you and Grayson WHAT kind of mistake keeps showing up.
+  const misconceptionCounts = {};
+  roundResults.forEach(r=>{
+    if(r.misconceptionTag) misconceptionCounts[r.misconceptionTag] = (misconceptionCounts[r.misconceptionTag]||0)+1;
+  });
+  const misconceptionHTML = Object.keys(misconceptionCounts).length
+    ? `<div class="summary-stat" style="display:block;"><div class="topic-name">Patterns noticed today</div>` +
+      Object.entries(misconceptionCounts).map(([tag,count])=>`<div class="explain">${tag} — ${count}×</div>`).join("") +
+      `</div>` : "";
+
+  app.innerHTML = `
+    <div class="card">
+      <div class="big-emoji">${emoji}</div>
+      <h1 style="text-align:center;">${correctCount} / ${total} correct</h1>
+      <p class="subtitle" style="text-align:center;">Math session complete.</p>
+      ${levelUpHTML}
+      ${misconceptionHTML}
+      <button class="next-btn" onclick="startAdaptiveSession('math')">Practice Math again</button>
+      <button class="dashboard-btn" onclick="renderMathHub()">Back to Math</button>
+      <button class="back-link" style="margin-top:10px;" onclick="renderHome()">Home</button>
     </div>`;
 }
 
@@ -1877,6 +2324,28 @@ function renderDashboard(){
       : `<p class="subject-summary">Reading-based — depth grows as topics are mastered.</p>`;
     const rows = cfg.topics.map(t=>{
       const s = STATE[subject].topics[t.id];
+      if(subject === "math"){
+        // Math: surface the adaptive learner model directly — mastery,
+        // confidence (evidence volume, kept independent per the spec),
+        // memory freshness, and any recurring misconception pattern —
+        // rather than the old single tier-badge + accuracy% view.
+        const tier = currentDisplayTier(subject, t.id);
+        const concept = s.concepts[tier] || defaultConceptState();
+        const rs = concept.lastSeenAt ? Math.round(retrievalStrengthNow(concept)*100) : null;
+        const dueTag = (rs !== null && rs < REVIEW_DUE_THRESHOLD*100)
+          ? ` <span style="color:#d97706; font-weight:700;">· due for review</span>` : "";
+        const topMisconception = Object.entries(concept.misconceptions||{}).sort((a,b)=>b[1]-a[1])[0];
+        const misconceptionLine = topMisconception
+          ? `<div class="explain">Recurring pattern: ${topMisconception[0]} (${topMisconception[1]}×)</div>` : "";
+        return `<div class="summary-stat" style="display:block;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="topic-name">${t.name}${dueTag}</span>
+            <span class="tier-badge t${tier % 4}">${cfg.tierLabels[tier]}</span>
+          </div>
+          <div class="explain">Mastery ${Math.round(concept.mastery*100)}% · confidence ${Math.round(concept.confidence*100)}%${rs!==null ? ` · memory freshness ${rs}%` : ""}</div>
+          ${misconceptionLine}
+        </div>`;
+      }
       const acc = s.attempts ? Math.round((s.correct/s.attempts)*100) : null;
       const gapTag = s.needsReview ? ` <span style="color:#d97706; font-weight:700;">· needs 100% to advance</span>` : "";
       return `<div class="summary-stat">
@@ -1904,6 +2373,8 @@ window.renderHome = renderHome;
 window.renderDashboard = renderDashboard;
 window.renderTopicSelect = renderTopicSelect;
 window.startTopicSession = startTopicSession;
+window.renderMathHub = renderMathHub;
+window.startAdaptiveSession = startAdaptiveSession;
 
 renderHome();
 
