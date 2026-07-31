@@ -2031,15 +2031,28 @@ function renderAdaptiveQuestion(){
     </div>`;
 }
 
-// A lightweight hint: the first clause of the explanation, shown on request
-// rather than after answering. Tracked (hintRevealed) so the learner model
-// can discount the evidence value of a subsequent correct answer.
+// A lightweight hint: a generic, topic-level strategy nudge, shown on
+// request rather than after answering. Deliberately NOT derived from the
+// question's `explain` text — that always contains the final answer, which
+// would make "hint" mean "just tell me the answer." Tracked (hintRevealed)
+// so the learner model discounts the evidence value of a subsequent correct
+// answer (see bktUpdate).
+const MATH_HINTS = {
+  place_value: "Look at each digit's position — is it in the ones, tens, hundreds, or thousands place?",
+  add_sub:     "Try counting up from the smaller number, or break the numbers into tens and ones.",
+  mult_div:    "Think of it as equal groups — can you count up by that number?",
+  fractions:   "The bottom number tells you how many equal parts there are in total.",
+  measurement: "Picture a clock face or a ruler — what would the hands or marks show?",
+  geometry:    "Count the flat surfaces, corners, or straight edges carefully, one at a time.",
+  statistics:  "Look at each value one at a time and compare them side by side.",
+  reasoning:   "Read it step by step — what happens first, then what happens next?",
+};
 function revealHint(){
   const q = currentRound[currentIndex];
   hintRevealed = true;
-  const hintText = q.explain.split(/[.,]/)[0];
+  const hintText = MATH_HINTS[q.topicId] || "Take your time and think it through step by step.";
   const zone = document.getElementById("hintZone");
-  if(zone) zone.innerHTML = `<div class="explain">💡 ${hintText}...</div>`;
+  if(zone) zone.innerHTML = `<div class="explain">💡 ${hintText}</div>`;
 }
 window.revealHint = revealHint;
 
