@@ -1768,8 +1768,13 @@ function frontierTier(subject){
 // ZPD sweet spot (neither trivial nor frustrating), a catch-up bonus for
 // topics lagging behind his own most-advanced Math topic, a small staleness
 // bonus so every topic still gets covered eventually, and a penalty if a
-// prerequisite topic isn't ready yet (Knowledge Graph gate).
-function topicPriorityScore(subject, topicId, focusTopicId, frontier){
+// prerequisite topic isn't ready yet (Knowledge Graph gate). Note: this
+// scores how attractive a topic is on its own merits — it does NOT decide
+// focus-mode selection. A flat "focus bonus" here used to just nudge the
+// odds in a multi-way weighted draw, which wasn't enough to make "Focus on
+// this" feel focused; that's now handled by direct slot reservation in
+// buildAdaptiveMathSession instead (see FOCUS_SLOT_RATIO).
+function topicPriorityScore(subject, topicId, frontier){
   const activeTier = currentDisplayTier(subject, topicId);
   const concept = STATE[subject].topics[topicId].concepts[activeTier] || defaultConceptState();
   const rs = retrievalStrengthNow(concept);
@@ -1778,9 +1783,8 @@ function topicPriorityScore(subject, topicId, focusTopicId, frontier){
   const zpdScore = 1 - Math.min(1, Math.abs(predicted - ZPD_TARGET) / 0.3);
   const readinessPenalty = prerequisitesReady(topicId) ? 0 : 0.6;
   const stalenessBonus = Math.min(0.3, (STATE[subject].topics[topicId].roundsSince||0) * 0.05);
-  const focusBonus = (focusTopicId && topicId === focusTopicId) ? 1.5 : 0;
   const catchUpBonus = frontier != null ? Math.max(0, frontier - activeTier) * CATCH_UP_WEIGHT : 0;
-  return Math.max(0.05, dueScore + zpdScore + stalenessBonus + catchUpBonus + focusBonus - readinessPenalty);
+  return Math.max(0.05, dueScore + zpdScore + stalenessBonus + catchUpBonus - readinessPenalty);
 }
 
 function questionForConceptTier(subject, topicId, tier, usedTexts){
@@ -1798,14 +1802,26 @@ function questionForConceptTier(subject, topicId, tier, usedTexts){
   return { topicId, tier, ...q };
 }
 
-// Builds one interleaved, adaptive Math session: each of the 10 slots
-// re-scores every topic (so priorities can shift mid-session), then picks
-// a weighted-random topic from the top few candidates — never fully greedy
+// Builds one interleaved, adaptive Math session. Two modes:
+//
+// FREE mode (no focusTopicId — "Practice Math"): each of the 10 slots
+// re-scores every topic (so priorities can shift mid-session), then picks a
+// weighted-random topic from the top few candidates — never fully greedy
 // (sessions would feel robotic) and never allowing more than
-// MAX_CONSECUTIVE_SAME_TOPIC in a row (interleaving, per the spec's
-// "mixed practice over blocked practice" principle). An optional
-// focusTopicId (manual "focus on this topic" choice) biases selection
-// toward one topic without abandoning interleaving entirely.
+// MAX_CONSECUTIVE_SAME_TOPIC in a row (interleaving, per the spec's "mixed
+// practice over blocked practice" principle).
+//
+// FOCUS mode ("Focus on this topic"): a flat scoring bonus alone wasn't
+// enough — with several other topics also scoring reasonably (due for
+// review, behind on catch-up, etc.), the chosen topic would only win a
+// three-way weighted draw about half the time, which doesn't match what
+// "Focus on this" promises. Focus mode instead reserves a large majority of
+// slots (FOCUS_SLOT_RATIO) directly for the chosen topic, in blocks of up
+// to FOCUS_MAX_RUN questions with brief interleaved breaks for retention —
+// blocked deliberate practice with periodic retrieval checks, rather than a
+// three-way split that barely reads as "focused" at all.
+const FOCUS_SLOT_RATIO = 0.8; // e.g. 8 of 10 slots go to the focus topic
+const FOCUS_MAX_RUN = 4;      // longest uninterrupted block before a breather question
 function buildAdaptiveMathSession(subject, focusTopicId){
   const topics = CURRICULUM[subject].topics.map(t=>t.id);
   const usedTexts = new Set();
@@ -1815,16 +1831,29 @@ function buildAdaptiveMathSession(subject, focusTopicId){
   // (they only change once an answer is actually recorded), so re-deriving
   // this on every one of the 10 picks would just be wasted work.
   const frontier = frontierTier(subject);
+  const focusSlotCap = Math.round(ADAPTIVE_SESSION_LENGTH * FOCUS_SLOT_RATIO);
+  const maxRun = focusTopicId ? FOCUS_MAX_RUN : MAX_CONSECUTIVE_SAME_TOPIC;
   for(let i=0;i<ADAPTIVE_SESSION_LENGTH;i++){
-    let scored = topics.map(id => ({id, score: topicPriorityScore(subject, id, focusTopicId, frontier)}));
-    if(lastTopic && lastTopicStreak >= MAX_CONSECUTIVE_SAME_TOPIC){
-      scored = scored.filter(s => s.id !== lastTopic);
+    let chosenId;
+    const focusCountSoFar = out.filter(q=>q.topicId===focusTopicId).length;
+    const focusDue = focusTopicId
+      && focusCountSoFar < focusSlotCap
+      && (lastTopic !== focusTopicId || lastTopicStreak < maxRun);
+    if(focusDue){
+      chosenId = focusTopicId;
+    } else {
+      let scored = topics.map(id => ({id, score: topicPriorityScore(subject, id, frontier)}));
+      if(focusTopicId) scored = scored.filter(s => s.id !== focusTopicId); // non-focus slots interleave OTHER topics
+      if(lastTopic && lastTopicStreak >= maxRun){
+        scored = scored.filter(s => s.id !== lastTopic);
+      }
+      scored.sort((a,b)=>b.score-a.score);
+      const pool = scored.slice(0, 3);
+      const totalWeight = pool.reduce((sum,s)=>sum+s.score, 0);
+      let r = Math.random()*totalWeight;
+      chosenId = pool[0].id;
+      for(const s of pool){ r -= s.score; if(r<=0){ chosenId = s.id; break; } }
     }
-    scored.sort((a,b)=>b.score-a.score);
-    const pool = scored.slice(0, 3);
-    const totalWeight = pool.reduce((sum,s)=>sum+s.score, 0);
-    let r = Math.random()*totalWeight, chosenId = pool[0].id;
-    for(const s of pool){ r -= s.score; if(r<=0){ chosenId = s.id; break; } }
     const activeTier = currentDisplayTier(subject, chosenId);
     out.push(questionForConceptTier(subject, chosenId, activeTier, usedTexts));
     if(chosenId === lastTopic) lastTopicStreak++; else { lastTopic = chosenId; lastTopicStreak = 1; }
