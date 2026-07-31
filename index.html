@@ -9,6 +9,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Grayson's App">
 <link rel="apple-touch-icon" href="icon-192.png">
+<!-- Only used once cross-device sync is turned on below (SYNC_ENABLED = true).
+     Harmless to load otherwise; the app works fully offline either way. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --blue:#2563eb; --green:#16a34a; --red:#dc2626; --amber:#d97706;
@@ -254,10 +258,22 @@ const GLOSSARY = {
   "Progressive tense": "shows something happening right now",
   "Future tense": "shows something that hasn't happened yet, but will",
   "Present perfect tense": "shows something that has already happened",
+  "Past tense": "shows something that already happened",
 };
 function withDef(term){
   const def = GLOSSARY[term];
   return def ? ` (${term.toLowerCase()} = ${def})` : "";
+}
+// Builds a short "quick reminder" sentence introducing one or more grammar
+// terms BEFORE the question is asked, not just after — so a 6-year-old has
+// the concept in hand while he's thinking, not only once he's already
+// answered. Terms not in GLOSSARY are silently skipped (safe to call with
+// anything).
+function introSentence(...terms){
+  const known = terms.filter(t => GLOSSARY[t]);
+  if(!known.length) return "";
+  const sentences = known.map(t => `${t} is ${GLOSSARY[t]}.`);
+  return `Quick reminder: ${sentences.join(" ")} `;
 }
 
 /* ---------------------------------------------------------------------
@@ -465,72 +481,80 @@ G.english.word_classes = [
     const isNoun=Math.random()<0.5; const word=isNoun?pick(nouns):pick(verbs);
     const correct=isNoun?"Noun":"Verb";
     const {options,correctIndex}=makeMCQ(correct,["Noun","Verb","Adjective"]);
-    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
+    return {q:`${introSentence("Noun","Verb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const adjs=["shiny","enormous","curious","rusty"]; const advs=["quickly","carefully","loudly","bravely"];
     const isAdj=Math.random()<0.5; const word=isAdj?pick(adjs):pick(advs);
     const correct=isAdj?"Adjective":"Adverb";
     const {options,correctIndex}=makeMCQ(correct,["Adjective","Adverb","Noun"]);
-    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is an ${correct.toLowerCase()}${withDef(correct)}.`}; },
+    return {q:`${introSentence("Adjective","Adverb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is an ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const pronouns=["he","she","it","they","we"]; const conjunctions=["and","but","because","although"];
     const isPro=Math.random()<0.5; const word=isPro?pick(pronouns):pick(conjunctions);
     const correct=isPro?"Pronoun":"Conjunction";
     const {options,correctIndex}=makeMCQ(correct,["Pronoun","Conjunction","Preposition"]);
-    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
+    return {q:`${introSentence("Pronoun","Conjunction")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
   () => { const preps=["under","beside","through","between"]; const properNouns=["London","Grayson","Tuesday","Mars"];
     const isPrep=Math.random()<0.5; const word=isPrep?pick(preps):pick(properNouns);
     const correct=isPrep?"Preposition":"Proper noun";
     const {options,correctIndex}=makeMCQ(correct,["Preposition","Proper noun","Common noun"]);
-    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; }
+    return {q:`${introSentence("Preposition","Proper noun")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; }
 ];
 
 // ---- ENGLISH: Sentence Structure ----
 G.english.sentence_structure = [
-  () => { const complete=["The dog barked loudly.","Grayson built a tower."]; const fragment=["Running down the street","Because it was raining"];
+  () => { const complete=["The dog barked loudly.","Grayson built a tower.","The car raced down the hill.","Scientists study the stars."];
+    const fragment=["Running down the street","Because it was raining","Under the old bridge","Building a rocket ship"];
     const isComplete=Math.random()<0.5; const text=isComplete?pick(complete):pick(fragment);
     const correct=isComplete?"Complete sentence":"Sentence fragment";
     const {options,correctIndex}=makeMCQ(correct,["Complete sentence","Sentence fragment"]);
-    return {q:`Is this a complete sentence or a fragment? "${text}"`, options, correctIndex,
+    return {q:`${introSentence("Complete sentence","Sentence fragment")}Is this a complete sentence or a fragment? "${text}"`, options, correctIndex,
       explain:`"${text}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const simple=["The car stopped.","She likes science."]; const compound=["The car stopped, and the driver got out.","She likes science, but she loves art more."];
+  () => { const simple=["The car stopped.","She likes science.","Grayson built a tower.","The engine roared."];
+    const compound=["The car stopped, and the driver got out.","She likes science, but she loves art more.","Grayson built a tower, and it didn't fall.","The engine roared, but the car stayed still."];
     const isSimple=Math.random()<0.5; const text=isSimple?pick(simple):pick(compound);
     const correct=isSimple?"Simple sentence":"Compound sentence";
     const {options,correctIndex}=makeMCQ(correct,["Simple sentence","Compound sentence"]);
-    return {q:`Is this a simple or compound sentence? "${text}"`, options, correctIndex,
+    return {q:`${introSentence("Simple sentence","Compound sentence")}Is this a simple or compound sentence? "${text}"`, options, correctIndex,
       explain:`It's a ${correct.toLowerCase()}${withDef(correct)} — ${isSimple?"one idea":"two ideas joined by a conjunction"}.`}; },
-  () => { const sentences=["Although it was raining, we went outside.","When the bell rang, everyone stopped."];
+  () => { const sentences=["Although it was raining, we went outside.","When the bell rang, everyone stopped.","Because he was curious, Grayson opened the box.","While the rocket launched, the crowd cheered."];
     const text=pick(sentences); const correct="Subordinate clause";
     const {options,correctIndex}=makeMCQ(correct,["Subordinate clause","Main clause","Compound sentence"]);
-    return {q:`In "${text}", what type of clause comes first?`, options, correctIndex,
+    return {q:`${introSentence("Subordinate clause")}In "${text}", what type of clause comes first?`, options, correctIndex,
       explain:`It starts with a subordinate clause${withDef(correct)}.`}; },
-  () => { const a="The rocket launched."; const b="Everyone cheered.";
+  () => { const pairs=[["The rocket launched.","Everyone cheered."],["The dog barked.","The cat ran away."],["Grayson finished the model.","He showed his dad."],["The rain stopped.","We went outside to play."]];
+    const [a,b]=pick(pairs);
     const correct=`${a.slice(0,-1)}, and ${b.toLowerCase()}`;
     const wrongs=[`${a} ${b}`,`${a.slice(0,-1)} but ${b.toLowerCase()}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q:`Which correctly joins these into one compound sentence? "${a}" + "${b}"`, options, correctIndex,
+    return {q:`${introSentence("Compound sentence")}Which correctly joins these into one compound sentence? "${a}" + "${b}"`, options, correctIndex,
       explain:`Join with a comma and "and": "${correct}"`}; }
 ];
 
 // ---- ENGLISH: Punctuation ----
 G.english.punctuation = [
-  () => { const text="the dog ran fast"; const correct="The dog ran fast.";
-    const wrongs=["the dog ran fast.","The dog ran fast","The Dog ran fast."];
+  () => { const pairs=[["the dog ran fast","The dog ran fast."],["grayson built a rocket","Grayson built a rocket."],["the car stopped suddenly","The car stopped suddenly."],["she loves science","She loves science."]];
+    const [text,correct]=pick(pairs);
+    const wrongs=[text+".", correct.slice(0,-1), text.charAt(0).toUpperCase()+text.slice(1)];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which is correctly punctuated? (original: "${text}")`, options, correctIndex,
       explain:`Sentences start with a capital letter and end with a full stop: "${correct}"`}; },
-  () => { const items=["apples","pears","bananas"];
-    const correct=`I bought apples, pears and bananas.`;
-    const wrongs=[`I bought apples pears and bananas.`,`I bought apples, pears, and, bananas.`,`I bought apples pears, and bananas`];
+  () => { const lists=[["apples","pears","bananas"],["cars","trucks","trains"],["red","blue","green"],["rockets","planets","stars"]];
+    const items=pick(lists);
+    const correct=`I bought ${items[0]}, ${items[1]} and ${items[2]}.`;
+    const wrongs=[`I bought ${items[0]} ${items[1]} and ${items[2]}.`,`I bought ${items[0]}, ${items[1]}, and, ${items[2]}.`,`I bought ${items[0]} ${items[1]}, and ${items[2]}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which sentence uses commas correctly in a list?`, options, correctIndex,
       explain:`Commas separate list items: "${correct}"`}; },
-  () => { const isPossessive=Math.random()<0.5;
-    const correct = isPossessive ? "Grayson's car" : "don't";
-    const wrongs = isPossessive ? ["Graysons' car","Graysons car"] : ["dont","do'nt"];
+  () => { const names=["Grayson","Emma","the dog"]; const name=pick(names);
+    const isPossessive=Math.random()<0.5;
+    const correct = isPossessive ? `${name}'s car` : "don't";
+    const wrongs = isPossessive ? [`${name}s' car`,`${name}s car`] : ["dont","do'nt"];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q: isPossessive ? `Which correctly shows the car belongs to Grayson?` : `Which correctly contracts "do not"?`,
+    return {q: isPossessive ? `Which correctly shows the car belongs to ${name}?` : `Which correctly contracts "do not"?`,
       options, correctIndex, explain:`Correct form: "${correct}".`}; },
-  () => { const correct=`"I found it!" said Grayson.`;
-    const wrongs=[`I found it! said Grayson.`,`"I found it! said Grayson."`,`"I found it"! said Grayson.`];
+  () => { const lines=[["I found it!","Grayson"],["Look at that!","Emma"],["We won!","the team"],["It's alive!","the scientist"]];
+    const [line,speaker]=pick(lines);
+    const correct=`"${line}" said ${speaker}.`;
+    const wrongs=[`${line} said ${speaker}.`,`"${line} said ${speaker}."`,`"${line.slice(0,-1)}"! said ${speaker}.`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which correctly punctuates the direct speech?`, options, correctIndex,
       explain:`Speech marks wrap exactly what's said, punctuation goes inside: ${correct}`}; }
@@ -538,23 +562,23 @@ G.english.punctuation = [
 
 // ---- ENGLISH: Verb Tenses ----
 G.english.tenses = [
-  () => { const pairs=[["walk","walked"],["jump","jumped"],["build","built"],["run","ran"],["go","went"]];
+  () => { const pairs=[["walk","walked"],["jump","jumped"],["build","built"],["run","ran"],["go","went"],["paint","painted"],["explore","explored"]];
     const [present,past]=pick(pairs); const correct=past;
     const {options,correctIndex}=makeMCQ(correct,[present, edForm(present), past+"ed"]);
-    return {q:`What is the past tense of "${present}"?`, options, correctIndex,
+    return {q:`${introSentence("Past tense")}What is the past tense of "${present}"?`, options, correctIndex,
       explain:`"${present}" → "${correct}" (past tense = something that already happened).`}; },
-  () => { const verbs=["build","design","paint"]; const v=pick(verbs); const correct=ingForm(v);
+  () => { const verbs=["build","design","paint","explore","race"]; const v=pick(verbs); const correct=ingForm(v);
     const {options,correctIndex}=makeMCQ(correct,[v, edForm(v), v+"s"]);
-    return {q:`Which shows the action happening right now (progressive tense) for "${v}"? "Grayson is ___ a tower."`,
+    return {q:`${introSentence("Progressive tense")}Which shows the action happening right now for "${v}"? "Grayson is ___ a tower."`,
       options, correctIndex, explain:`Progressive tense uses "is/are + verb-ing": "${correct}"${withDef("Progressive tense")}.`}; },
-  () => { const verbs=["explore","build","paint"]; const v=pick(verbs); const correct=`will ${v}`;
+  () => { const verbs=["explore","build","paint","launch","design"]; const v=pick(verbs); const correct=`will ${v}`;
     const {options,correctIndex}=makeMCQ(correct,[edForm(v),`is ${ingForm(v)}`,v]);
-    return {q:`Which shows the future tense for "${v}"? "Tomorrow, Grayson ___ a rocket."`, options, correctIndex,
+    return {q:`${introSentence("Future tense")}Which shows the future tense for "${v}"? "Tomorrow, Grayson ___ a rocket."`, options, correctIndex,
       explain:`Future tense: "will + verb": "${correct}"${withDef("Future tense")}.`}; },
-  () => { const pairs=[["walk","walked"],["build","built"],["see","seen"]]; const [present,past]=pick(pairs);
+  () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"],["explore","explored"]]; const [present,past]=pick(pairs);
     const correct=`has ${past}`;
     const {options,correctIndex}=makeMCQ(correct,[`have ${present}`,`is ${ingForm(present)}`,past]);
-    return {q:`Which shows the present perfect tense? "Grayson ___ the whole model."`, options, correctIndex,
+    return {q:`${introSentence("Present perfect tense")}Which shows the present perfect tense? "Grayson ___ the whole model."`, options, correctIndex,
       explain:`Present perfect: "has/have + past participle": "${correct}"${withDef("Present perfect tense")}.`}; }
 ];
 
@@ -589,29 +613,35 @@ G.english.composition = [
     const {options,correctIndex}=makeMCQ(correct,["ok","fine","stuff"]);
     return {q:`Which is the more powerful, descriptive word to replace "${word}"?`, options, correctIndex,
       explain:`"${correct}" is more vivid and precise than "${word}".`}; },
-  () => { const openers=["Suddenly, the engine roared to life.","Deep in the workshop, gears began to turn."];
-    const weak=["The car started.","There was a car in the workshop."];
-    const correct=pick(openers);
-    const {options,correctIndex}=makeMCQ(correct,[pick(weak),pick(weak)]);
+  () => { const pairs=[["Suddenly, the engine roared to life.","The car started."],["Deep in the workshop, gears began to turn.","There was a car in the workshop."],["With a deafening blast, the rocket tore into the sky.","The rocket went up."],["Under a sky full of stars, the scientists waited.","It was nighttime and the scientists waited."]];
+    const [correct,weak]=pick(pairs);
+    const otherWeak=pick(["The car started.","There was a car in the workshop.","The rocket went up.","It was nighttime and the scientists waited."].filter(w=>w!==weak));
+    const {options,correctIndex}=makeMCQ(correct,[weak,otherWeak]);
     return {q:`Which is the more engaging sentence opener?`, options, correctIndex,
       explain:`"${correct}" hooks the reader with vivid detail or action.`}; },
-  () => { const a="The rain poured down."; const b="We stayed inside and read books.";
-    const correct=`Because the rain poured down, we stayed inside and read books.`;
-    const wrongs=[`The rain poured down we stayed inside and read books.`,`We stayed inside and read books the rain poured down.`];
+  () => { const pairs=[["The rain poured down.","We stayed inside and read books."],["Grayson studied hard.","He passed the test."],["The engine overheated.","The car stopped."],["The alarm went off.","Everyone left the building."]];
+    const [a,b]=pick(pairs);
+    const correct=`Because ${a.slice(0,-1).toLowerCase()}, ${b.toLowerCase()}`;
+    const wrongs=[`${a} ${b}`,`${b} ${a}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which best combines these two ideas showing cause and effect? "${a}" + "${b}"`, options, correctIndex,
       explain:`"${correct}" clearly links cause and effect with "Because".`}; },
-  () => { const plainNoun="car"; const expanded="the rusty, roaring vintage car";
-    const {options,correctIndex}=makeMCQ(expanded,["the car","a car that is a car","car, car, car"]);
+  () => { const pairs=[["car","the rusty, roaring vintage car"],["dog","the small, fluffy brown dog"],["rocket","the shiny, silver rocket"],["castle","the tall, ancient stone castle"]];
+    const [plainNoun,expanded]=pick(pairs);
+    const otherExpanded=pick(["the rusty, roaring vintage car","the small, fluffy brown dog","the shiny, silver rocket","the tall, ancient stone castle"].filter(e=>e!==expanded));
+    const {options,correctIndex}=makeMCQ(expanded,[`the ${plainNoun}`,`a ${plainNoun} that is a ${plainNoun}`,otherExpanded]);
     return {q:`Which is the best expanded noun phrase for "${plainNoun}"?`, options, correctIndex,
       explain:`"${expanded}" adds vivid, specific detail.`}; }
 ];
 
-// ---- HISTORY: 4 fixed comprehension questions per topic (easy -> harder) ----
-// Each topic's tier controls how many of its 4 questions are unlocked for a
-// given round visit (2 at tier0, 3 at tier1, all 4 at tier2/3) — the same
+// ---- HISTORY: 6 fixed comprehension questions per topic (easy -> harder) ----
+// Each topic's tier controls how MANY of its 6 questions are unlocked for a
+// given round visit (2 at tier0, 3 at tier1, 4 at tier2/3) — the same
 // per-topic tier/streak state and recordAnswer logic used by math/english
-// drives this, no separate leveling code needed.
+// drives this, no separate leveling code needed. Having 6 questions but only
+// showing up to 4 per visit (see buildHistoryRound, which prefers whichever
+// haven't been asked recently) is what lets the round rotate through more
+// content instead of showing the exact same 4 every single time.
 G.history.flag = [
   () => makeFactMCQ("50", ["13","48","52"], "The flag has 50 stars, one for each of the 50 states.",
     "How many stars are on the American flag?"),
@@ -624,6 +654,12 @@ G.history.flag = [
   () => makeFactMCQ("Old Glory", ["Red White Blue","Freedom Flag","Liberty Banner"],
     "The passage says the flag is sometimes called \"Old Glory\" or \"the Stars and Stripes.\"",
     "What is another nickname for the flag, mentioned in the passage?"),
+  () => makeFactMCQ("Red and white", ["Blue and gold","Green and white","Red and blue"],
+    "The passage says the 13 stripes are red and white.",
+    "What colors are the stripes on the American flag?"),
+  () => makeFactMCQ("The Pledge of Allegiance", ["The national anthem","A birthday song","A poem about stars"],
+    "The passage says many Americans say the Pledge of Allegiance while looking at the flag, especially at school.",
+    "What do many Americans say while looking at the flag, especially at school in the morning?"),
 ];
 G.history.independence_day = [
   () => makeFactMCQ("The Declaration of Independence", ["The Constitution","The Bill of Rights","The Emancipation Proclamation"],
@@ -638,6 +674,12 @@ G.history.independence_day = [
   () => makeFactMCQ("Fireworks, parades, and picnics", ["Sending letters to Britain","A quiet day at school","Building new colonies"],
     "The passage says Americans celebrate with fireworks, parades, and picnics.",
     "How do Americans usually celebrate the Fourth of July?"),
+  () => makeFactMCQ("13", ["10","20","50"],
+    "The passage says America was made up of 13 colonies ruled by Britain.",
+    "How many colonies were there before independence?"),
+  () => makeFactMCQ("Britain", ["France","Spain","Native Americans"],
+    "The passage says the 13 colonies were ruled by Britain, far across the ocean.",
+    "Which country ruled the 13 colonies before independence?"),
 ];
 G.history.washington = [
   () => makeFactMCQ("The first President", ["The 16th President","The current President","A king"],
@@ -652,6 +694,12 @@ G.history.washington = [
   () => makeFactMCQ("The one-dollar bill", ["The ten-dollar bill","A postage stamp only","A football jersey"],
     "The passage says his face appears on the one-dollar bill (and the quarter, and Mount Rushmore).",
     "Name one place mentioned in the passage where you can see George Washington's face."),
+  () => makeFactMCQ("1789", ["1776","1620","1863"],
+    "The passage says Washington became President in 1789.",
+    "In what year did George Washington become President?"),
+  () => makeFactMCQ("Mount Rushmore", ["The Statue of Liberty","The White House","The Capitol Building"],
+    "The passage says a giant carving of Washington's face is on Mount Rushmore.",
+    "Besides money, where is a giant carving of Washington's face, according to the passage?"),
 ];
 G.history.lincoln = [
   () => makeFactMCQ("The 16th President", ["The first President","The 2nd President","The current President"],
@@ -666,6 +714,12 @@ G.history.lincoln = [
   () => makeFactMCQ("The Emancipation Proclamation", ["The Declaration of Independence","The Constitution","The Gettysburg Bridge"],
     "In 1863, Lincoln signed the Emancipation Proclamation, an important step toward ending slavery.",
     "What did Lincoln sign in 1863 that was an important step toward ending slavery?"),
+  () => makeFactMCQ("The Northern and Southern states", ["America and Britain","Two other countries","Two Presidents"],
+    "The passage says the Civil War was a war between the Northern and Southern states.",
+    "Who fought against whom in the Civil War?"),
+  () => makeFactMCQ("His honesty, and for helping hold the country together", ["His singing", "His inventions", "His paintings"],
+    "The passage says Lincoln is remembered for his honesty and for helping hold the country together.",
+    "What is Lincoln remembered for, according to the passage?"),
 ];
 G.history.thanksgiving = [
   () => makeFactMCQ("The Mayflower", ["The Liberty","The Santa Maria","The Eagle"],
@@ -680,6 +734,12 @@ G.history.thanksgiving = [
   () => makeFactMCQ("The harvest feast shared by the Pilgrims and the Wampanoag", ["The day the ship landed","A snowstorm","A trip back to England"],
     "The passage says the 1621 harvest feast shared together is remembered today as the first Thanksgiving.",
     "What event from the passage is remembered today as the first Thanksgiving?"),
+  () => makeFactMCQ("1620", ["1776","1621","1863"],
+    "The passage says the Pilgrims sailed across the ocean and landed in 1620.",
+    "In what year did the Pilgrims land in what is now Massachusetts?"),
+  () => makeFactMCQ("Corn", ["Wheat","Rice","Potatoes"],
+    "The passage says Squanto helped the Pilgrims learn to grow corn and survive.",
+    "What crop did Squanto teach the Pilgrims to grow?"),
 ];
 G.history.native_americans = [
   () => makeFactMCQ("Yes, millions of Native Americans were already living there", ["No, the land was empty","Only a few dozen people lived there","They arrived after the Pilgrims"],
@@ -694,6 +754,12 @@ G.history.native_americans = [
   () => makeFactMCQ("Many tribes and nations are still part of American life today", ["They all disappeared long ago","They moved to a different country","Only their name is remembered"],
     "The passage ends by saying many tribes and nations are still part of American life today.",
     "What does the passage say about Native Americans and America today?"),
+  () => makeFactMCQ("The Lakota", ["The Wampanoag","The Navajo","The Pilgrims"],
+    "The passage names the Lakota as a Native American nation on the Great Plains.",
+    "Which Native American nation does the passage say lived on the Great Plains?"),
+  () => makeFactMCQ("Hundreds", ["Just a few","Dozens","Thousands of thousands"],
+    "The passage says there were hundreds of different tribes and nations.",
+    "About how many different Native American tribes and nations does the passage say there were?"),
 ];
 G.history.mlk = [
   () => makeFactMCQ("Fair and equal treatment for Black Americans", ["A new flag design","More holidays for everyone","Building more schools"],
@@ -708,6 +774,12 @@ G.history.mlk = [
   () => makeFactMCQ("Every January", ["Every July","Every October","Only once, in 1963"],
     "The passage says the United States celebrates Martin Luther King Jr. Day every January.",
     "When does the United States celebrate Martin Luther King Jr. Day?"),
+  () => makeFactMCQ("Schools, buses, and other public places", ["Only at the beach","Only in stores","Nowhere — there were no unfair laws"],
+    "The passage says unfair laws kept Black Americans separated from white Americans in schools, buses, and other public places.",
+    "According to the passage, where were Black and white Americans kept separated by unfair laws?"),
+  () => makeFactMCQ("1963", ["1776","1620","1989"],
+    "The passage says Dr. King gave his famous \"I Have a Dream\" speech in 1963.",
+    "In what year did Dr. King give his famous speech?"),
 ];
 G.history.statue_of_liberty = [
   () => makeFactMCQ("A torch", ["A book","A sword","A flag"],
@@ -722,6 +794,12 @@ G.history.statue_of_liberty = [
   () => makeFactMCQ("It welcomed people arriving in America for a new life", ["It was the tallest building", "It was free to visit", "It was built by immigrants"],
     "Ships full of immigrants passed by the statue as they arrived, and it became a symbol of hope and welcome.",
     "Why did the Statue of Liberty become a symbol of hope for immigrants?"),
+  () => makeFactMCQ("On an island in New York Harbor", ["On a mountain","In Washington, D.C.","On a ship"],
+    "The passage says the statue stands on an island in New York Harbor.",
+    "Where does the Statue of Liberty stand?"),
+  () => makeFactMCQ("Friendship between the two countries and the idea of freedom", ["A trade deal for oil","The end of a war between them","A new king for America"],
+    "The passage says France gave the statue to celebrate friendship between the two countries and the idea of freedom.",
+    "What did France's gift of the statue celebrate?"),
 ];
 G.history.map_capital = [
   () => makeFactMCQ("50", ["13","48","52"], "The United States is made up of 50 states.",
@@ -735,6 +813,12 @@ G.history.map_capital = [
   () => makeFactMCQ("The Capitol Building", ["The White House","The Statue of Liberty","Mount Rushmore"],
     "The passage says the country's laws are made nearby, in the Capitol Building.",
     "Where are the country's laws made?"),
+  () => makeFactMCQ("Hawaii", ["Maine","Washington, D.C.","Texas"],
+    "The passage says the United States stretches from Hawaii in the Pacific Ocean to Maine on the Atlantic coast.",
+    "According to the passage, which state is on the Pacific Ocean side?"),
+  () => makeFactMCQ("No — it's its own special district", ["Yes, part of Virginia","Yes, part of Maryland","Yes, it's the 51st state"],
+    "The passage says Washington, D.C. isn't part of any state; it's its own special district.",
+    "Is Washington, D.C. part of a state?"),
 ];
 
 /* ---------------------------------------------------------------------
@@ -745,7 +829,10 @@ const STORAGE_KEY = "graysons_app_state_v1";
 function defaultTopicState(){
   // Starts at true tier 0 ("Basics") — a topic he hasn't played yet should
   // never look like it's already at "Advanced" before he's answered anything.
-  return { tier:0, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0 };
+  // recentQuestions: last few question texts asked for this topic, so the
+  // SAME question doesn't resurface round after round (not just within one
+  // round) — see questionForTopic below.
+  return { tier:0, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0, recentQuestions:[] };
 }
 function defaultState(){
   const s = { history:[], updatedAt:0 };
@@ -775,6 +862,7 @@ function migrateState(s){
       if(existing.correct === undefined) existing.correct = 0;
       if(existing.needsReview === undefined) existing.needsReview = false;
       if(existing.roundsSince === undefined) existing.roundsSince = 0;
+      if(!Array.isArray(existing.recentQuestions)) existing.recentQuestions = [];
     }
   }
   if(s.updatedAt === undefined) s.updatedAt = 0;
@@ -794,8 +882,15 @@ function loadState(){
   return defaultState();
 }
 function saveState(state){
+  state.updatedAt = Date.now();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  cloudSync(state); // no-op — local-only by design, see SYNC section
+  cloudSync(state); // no-op until Firebase is configured, see SYNC section
+}
+// Writes a state we just pulled FROM the cloud back into localStorage without
+// re-triggering a cloud write (it already lives there) — keeps the two in
+// sync without an infinite read/write ping-pong.
+function saveStateLocalOnly(state){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 let STATE = loadState();
@@ -816,19 +911,27 @@ function bumpRoundCounters(subject, touchedTopicIds){
   }
 }
 
-// Generates one question for a topic at its current tier, retrying a few
-// times if it collides with a question already used elsewhere in this same
-// round (procedural generators occasionally roll identical numbers; fixed
-// content like History can't collide since each visit uses distinct indices).
+// Generates one question for a topic at its current tier, retrying if it
+// collides with (a) a question already used elsewhere in THIS round, or
+// (b) one of the last few questions asked for this topic in PREVIOUS rounds
+// (topicState.recentQuestions) — this is what stops the same fill-in-the-
+// blank sentence from resurfacing round after round for the low-variety
+// generators. Small content pools may still occasionally repeat once the
+// fresh options run out (falls back after 20 tries) — that's an inherent
+// content-size limit, not a bug.
+const RECENT_QUESTIONS_MEMORY = 4;
 function questionForTopic(subject, topicId, usedTexts){
-  const tier = STATE[subject].topics[topicId].tier;
+  const topicState = STATE[subject].topics[topicId];
+  const tier = topicState.tier;
   const gens = G[subject][topicId];
+  const recent = new Set(topicState.recentQuestions || []);
   let q, attempts = 0;
   do {
     q = gens[Math.min(tier, gens.length-1)]();
     attempts++;
-  } while(usedTexts.has(q.q) && attempts < 15);
+  } while((usedTexts.has(q.q) || recent.has(q.q)) && attempts < 20);
   usedTexts.add(q.q);
+  topicState.recentQuestions = [q.q, ...(topicState.recentQuestions || [])].slice(0, RECENT_QUESTIONS_MEMORY);
   return { topicId, tier, ...q };
 }
 
@@ -867,22 +970,38 @@ function pickHistoryTopicsForRotation(subject, count){
   return byStaleness.slice(0, count);
 }
 
-// History round: pick a handful of topics; for each, unlock more of its 4
+// History round: pick a handful of topics; for each, unlock more of its 6
 // fixed comprehension questions as its tier rises (2 at tier0, 3 at tier1,
-// all 4 at tier2+), primer shown once before the first question of that topic.
+// 4 at tier2+), primer shown once before the first question of that topic.
+// Each topic has 6 questions total but a visit only shows up to 4 of them —
+// which 4 is chosen by preferring whichever haven't been asked in the last
+// couple of visits (same recentQuestions idea as questionForTopic above),
+// so repeat visits to the same topic rotate through its content instead of
+// always showing the identical first N questions in the same order.
 function buildHistoryRound(subject, topicIdsOverride){
   const topicIds = topicIdsOverride || pickHistoryTopicsForRotation(subject, HISTORY_TOPICS_PER_ROUND);
   if(!topicIdsOverride) bumpRoundCounters(subject, topicIds);
   const out = [];
   for(const topicId of topicIds){
-    const tier = STATE[subject].topics[topicId].tier;
+    const topicState = STATE[subject].topics[topicId];
+    const tier = topicState.tier;
     const unlockCount = Math.min(tier+2, 4);
     const topicDef = CURRICULUM[subject].topics.find(t=>t.id===topicId);
     const qFns = G[subject][topicId];
-    for(let i=0;i<unlockCount;i++){
-      const q = qFns[i]();
-      out.push({ topicId, tier, primer: i===0 ? topicDef.primer : null, ...q });
-    }
+    const recent = new Set(topicState.recentQuestions || []);
+    // Evaluate every fixed question once (they're deterministic content, not
+    // randomly generated), then prefer ones NOT recently shown, falling back
+    // to the recently-shown ones only if the pool is smaller than unlockCount.
+    const all = qFns.map((fn, idx) => ({ idx, q: fn() }));
+    const fresh = all.filter(c => !recent.has(c.q.q));
+    const stale = all.filter(c => recent.has(c.q.q));
+    const chosen = [...fresh, ...stale].slice(0, unlockCount).sort((a,b) => a.idx - b.idx);
+    chosen.forEach((c, i) => {
+      out.push({ topicId, tier, primer: i===0 ? topicDef.primer : null, ...c.q });
+    });
+    topicState.recentQuestions = chosen.map(c => c.q.q)
+      .concat(topicState.recentQuestions || [])
+      .slice(0, RECENT_QUESTIONS_MEMORY + 2); // History pool is bigger (6), remember a bit more
   }
   return out;
 }
@@ -908,11 +1027,26 @@ function buildBonusRound(subject, topicIds){
 // more practice. Tier is capped 0-3 (Year 2 Basics through Year 4), so a
 // mastered topic never goes past the Year 4 ceiling. Returns what happened
 // so the UI can explain it.
-function recordAnswer(subject, topicId, wasCorrect){
+//
+// isBonus: bonus rounds deliberately repeat a weak topic several times in
+// one sitting (see buildBonusRound above) — that's reinforcement, not new
+// evidence of mastery. If tier/streak changes were allowed there, 2 lucky
+// guesses back-to-back inside a single 10-question bonus round could ratchet
+// a topic all the way from tier 0 to tier 3 (Year 4) in one sitting, which
+// is exactly the "level went up but that doesn't seem real" bug this guards
+// against. Bonus rounds still track attempts/correct (so accuracy % stays
+// meaningful) but never change tier, streaks, or the needsReview flag —
+// only real progress in a NORMAL round can move the needle.
+function recordAnswer(subject, topicId, wasCorrect, isBonus){
   const t = STATE[subject].topics[topicId];
   const tierBefore = t.tier;
   t.attempts++;
   let leveledUp = false, leveledDown = false;
+  if(isBonus){
+    if(wasCorrect) t.correct++;
+    saveState(STATE);
+    return { tierBefore, tierAfter: t.tier, leveledUp, leveledDown };
+  }
   if(wasCorrect){
     t.correct++; t.correctStreak++; t.wrongStreak = 0;
     if(t.correctStreak >= 2){
@@ -941,13 +1075,48 @@ function subjectYear(subject){
 }
 
 /* ---------------------------------------------------------------------
-   6. SYNC — not used. Progress is stored locally per device/browser only.
-   (Cross-device sync via Firebase was scoped out at the user's request —
-   each device/browser keeps its own separate progress, which is fine for
-   how the app is actually used.)
+   6. SYNC (Firebase) — keeps Mac + iPad (and any other device) showing the
+   same progress. Uses a single Firestore document, no login/account for
+   Grayson required. Access is gated by PROGRESS_DOC_ID acting as a shared,
+   hard-to-guess key (matched against a Firestore security rule), rather
+   than by user auth — appropriate for a single-family, no-login kids app.
+
+   To activate:
+   1. Fill in FIREBASE_CONFIG with the config object from your Firebase
+      project's web app settings.
+   2. Fill in PROGRESS_DOC_ID with the same random ID used in your
+      Firestore security rule (see SETUP.md for the exact rule text).
+   3. Set SYNC_ENABLED = true.
+   Until all three are done, the app works exactly as before — fully
+   offline, localStorage only, nothing changes.
    --------------------------------------------------------------------- */
-function cloudSync(state){ /* no-op — local-only by design */ }
-function cloudPull(){ return Promise.resolve(null); }
+const SYNC_ENABLED = false;
+const FIREBASE_CONFIG = null; // { apiKey:"...", authDomain:"...", projectId:"...", ... }
+const PROGRESS_DOC_ID = null; // e.g. "grayson-9f3a1c7e" — must match the Firestore rule
+
+let fbDb = null;
+if(SYNC_ENABLED && FIREBASE_CONFIG && PROGRESS_DOC_ID && typeof firebase !== "undefined"){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    fbDb = firebase.firestore();
+  }catch(e){ fbDb = null; } // misconfigured or offline — app still works locally
+}
+
+// Best-effort push to the cloud. Never blocks or breaks gameplay: local save
+// (localStorage) has already succeeded by the time this is called, so a
+// failed/offline cloud write just means the NEXT successful save catches up.
+function cloudSync(state){
+  if(!fbDb) return;
+  fbDb.collection("progress").doc(PROGRESS_DOC_ID).set(state).catch(()=>{});
+}
+// Pulls whatever's currently in the cloud, or null if sync is off/offline/
+// nothing saved there yet.
+function cloudPull(){
+  if(!fbDb) return Promise.resolve(null);
+  return fbDb.collection("progress").doc(PROGRESS_DOC_ID).get()
+    .then(snap => snap.exists ? snap.data() : null)
+    .catch(()=>null);
+}
 
 /* ---------------------------------------------------------------------
    7. UI
@@ -972,7 +1141,7 @@ function renderHome(){
       <p class="subtitle">Pick a subject to get started.</p>
       <div class="subject-grid">${subjectButtons}</div>
       <button class="dashboard-btn" onclick="renderDashboard()">View progress</button>
-      <p class="footer-note">Runs fully offline once loaded. No account needed to play.</p>
+      <p class="footer-note">${SYNC_ENABLED ? "Progress syncs across devices. " : "Runs fully offline once loaded. "}No account needed to play.</p>
     </div>`;
 }
 
@@ -1041,7 +1210,7 @@ function answer(i){
     else if(idx === i) btn.classList.add("incorrect");
   });
   const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
-  const result = recordAnswer(currentSubject, q.topicId, wasCorrect);
+  const result = recordAnswer(currentSubject, q.topicId, wasCorrect, currentRoundMode === "bonus");
   roundResults.push({
     topicId:q.topicId, topicName, correct:wasCorrect,
     question:q.q, explain:q.explain, leveledUp:result.leveledUp, leveledDown:result.leveledDown
@@ -1161,6 +1330,29 @@ window.renderHome = renderHome;
 window.renderDashboard = renderDashboard;
 
 renderHome();
+
+// Cross-device sync check: render immediately from local state (above) so
+// the app is never blocked waiting on a network call, then — if sync is on
+// — pull whatever's in the cloud and adopt it ONLY if it's actually newer
+// than what's on this device. Whichever side (local or cloud) has the more
+// recent `updatedAt` wins; the loser is overwritten to match, so both sides
+// converge on one shared progress record instead of silently forking.
+if(SYNC_ENABLED){
+  cloudPull().then(cloudState => {
+    if(!cloudState) return; // nothing saved in the cloud yet — this device's save will seed it
+    const migrated = migrateState(cloudState);
+    if((migrated.updatedAt || 0) > (STATE.updatedAt || 0)){
+      STATE = migrated;
+      saveStateLocalOnly(STATE);
+      // Don't yank the screen out from under a round in progress — the
+      // merged state is already saved locally, so it'll be reflected the
+      // moment he returns to Home or the Dashboard.
+      if(!currentRound) renderHome();
+    } else if((STATE.updatedAt || 0) > (migrated.updatedAt || 0)){
+      cloudSync(STATE); // this device is ahead — push it up so the cloud catches up
+    }
+  });
+}
 </script>
 </body>
 </html>
