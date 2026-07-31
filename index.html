@@ -1549,9 +1549,16 @@ function finishTopicSession(subject, topicId, correctCount, totalCount){
    Until all three are done, the app works exactly as before — fully
    offline, localStorage only, nothing changes.
    --------------------------------------------------------------------- */
-const SYNC_ENABLED = false;
-const FIREBASE_CONFIG = null; // { apiKey:"...", authDomain:"...", projectId:"...", ... }
-const PROGRESS_DOC_ID = null; // e.g. "grayson-9f3a1c7e" — must match the Firestore rule
+const SYNC_ENABLED = true;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDfcKTqYI36PajoyjWKJAZGt1VOU-53Wz0",
+  authDomain: "grayson-app-4b90a.firebaseapp.com",
+  projectId: "grayson-app-4b90a",
+  storageBucket: "grayson-app-4b90a.firebasestorage.app",
+  messagingSenderId: "870795836882",
+  appId: "1:870795836882:web:eb745d7da9ed7e398d1c0b"
+};
+const PROGRESS_DOC_ID = "grayson-6f73d326e7ca27f8"; // must match the Firestore rule
 
 let fbDb = null;
 if(SYNC_ENABLED && FIREBASE_CONFIG && PROGRESS_DOC_ID && typeof firebase !== "undefined"){
