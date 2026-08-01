@@ -119,42 +119,8 @@
      before any question — no assumed context).
    --------------------------------------------------------------------- */
 const CURRICULUM = {
-  math: {
-    label: "Math",
-    icon: "🚗",
-    // 9 tiers: Basic/Intermediate/Advanced repeated for Year 2, then Year 3,
-    // then Year 4 (index 8 = Year 4 Advanced = the ceiling).
-    tierLabels: ["Year 2 · Basic","Year 2 · Intermediate","Year 2 · Advanced",
-                 "Year 3 · Basic","Year 3 · Intermediate","Year 3 · Advanced",
-                 "Year 4 · Basic","Year 4 · Intermediate","Year 4 · Advanced"],
-    yearForTier: [2,2,2,3,3,3,4,4,4],
-    topics: [
-      {id:"place_value",  name:"Number & Place Value"},
-      {id:"add_sub",      name:"Addition & Subtraction"},
-      {id:"mult_div",     name:"Multiplication & Division"},
-      {id:"fractions",    name:"Fractions & Decimals"},
-      {id:"measurement",  name:"Measurement, Time & Money"},
-      {id:"geometry",     name:"Shape, Angles & Position"},
-      {id:"statistics",   name:"Data & Statistics"},
-      {id:"reasoning",    name:"Word Problems & Reasoning"},
-    ]
-  },
-  english: {
-    label: "English",
-    icon: "📚",
-    tierLabels: ["Year 2 · Basic","Year 2 · Intermediate","Year 2 · Advanced",
-                 "Year 3 · Basic","Year 3 · Intermediate","Year 3 · Advanced",
-                 "Year 4 · Basic","Year 4 · Intermediate","Year 4 · Advanced"],
-    yearForTier: [2,2,2,3,3,3,4,4,4],
-    topics: [
-      {id:"word_classes",       name:"Word Classes"},
-      {id:"sentence_structure", name:"Sentences & Clauses"},
-      {id:"punctuation",        name:"Punctuation"},
-      {id:"tenses",             name:"Verb Tenses"},
-      {id:"vocabulary",         name:"Vocabulary & Spelling"},
-      {id:"composition",        name:"Composition & Style"},
-    ]
-  },
+  math: { label: "Math", icon: "🚗" },
+  english: { label: "English", icon: "📚" },
   history: {
     label: "History",
     icon: "🦅",
@@ -182,6 +148,127 @@ const CURRICULUM = {
     ]
   }
 };
+
+/* ---------------------------------------------------------------------
+   1b. SKILL GRAPH (Math & English) — redesigned 2026-08-01 per JC.
+   Replaces the old "topic progresses through 9 Year2->Year4 tiers" model.
+   Every curriculum objective is now its OWN independently-masterable skill
+   node with its own mastery/confidence/priority — Grayson can legitimately
+   be ahead in one skill and behind in another within the same subject, and
+   the tutor should never force every skill in a subject to march through
+   the same Year in lockstep. `year` here is informational only (shown on
+   the dashboard so a parent can sanity-check against school expectations)
+   — it plays NO role in gating or scheduling. `prereqs` is the real
+   structure: it's what foundational-importance / blocks-future-learning
+   are computed from in the priority score (see skillPriorityScore).
+   History is deliberately NOT part of this graph — its content is
+   independent historical facts with no real prerequisite depth, so it
+   stays on the original topic+primer model (CURRICULUM.history / the
+   topic-tier engine further down) per JC's explicit choice (2026-08-01).
+   --------------------------------------------------------------------- */
+const SKILLS = {
+  math: {
+    place_value_basics:        { label:"Place Value", year:2, prereqs:[] },
+    rounding_to_10:             { label:"Rounding to 10", year:2, prereqs:["place_value_basics"] },
+    rounding_to_100:             { label:"Rounding to 100", year:3, prereqs:["rounding_to_10"] },
+    rounding_to_1000:            { label:"Rounding to 1,000", year:4, prereqs:["rounding_to_100"] },
+    addition_within_20:         { label:"Addition within 20", year:2, prereqs:[] },
+    subtraction_within_20:      { label:"Subtraction within 20", year:2, prereqs:[] },
+    addition_with_regrouping:    { label:"Addition with Regrouping", year:3, prereqs:["addition_within_20","place_value_basics"] },
+    subtraction_across_zeros:    { label:"Subtraction Across Zeros", year:3, prereqs:["subtraction_within_20","place_value_basics"] },
+    column_addition:              { label:"Column Addition (Large Numbers)", year:4, prereqs:["addition_with_regrouping"] },
+    column_subtraction:           { label:"Column Subtraction (Large Numbers)", year:4, prereqs:["subtraction_across_zeros"] },
+    multiplication_facts:        { label:"Multiplication Facts (Times Tables)", year:2, prereqs:["addition_within_20"] },
+    division_facts:               { label:"Division Facts", year:3, prereqs:["multiplication_facts"] },
+    multiplication_2digit:        { label:"2-Digit Multiplication", year:3, prereqs:["multiplication_facts"] },
+    division_with_remainders:      { label:"Division with Remainders", year:4, prereqs:["division_facts"] },
+    multiplication_large_numbers:  { label:"Multiplying Large Numbers", year:4, prereqs:["multiplication_2digit"] },
+    understanding_fractions:     { label:"Understanding Fractions", year:2, prereqs:[] },
+    equivalent_fractions:         { label:"Equivalent Fractions", year:3, prereqs:["understanding_fractions"] },
+    fraction_of_amount:           { label:"Finding a Fraction of an Amount", year:3, prereqs:["understanding_fractions","division_facts"] },
+    comparing_fractions:           { label:"Comparing Fractions", year:4, prereqs:["equivalent_fractions"] },
+    fractions_on_number_line:      { label:"Fractions on a Number Line", year:4, prereqs:["understanding_fractions"] },
+    decimals:                      { label:"Decimals (Tenths & Hundredths)", year:4, prereqs:["understanding_fractions"] },
+    telling_time:                 { label:"Telling the Time", year:2, prereqs:[] },
+    money:                        { label:"Money", year:2, prereqs:["addition_within_20"] },
+    perimeter:                     { label:"Perimeter", year:3, prereqs:["addition_within_20"] },
+    area:                          { label:"Area", year:4, prereqs:["multiplication_facts"] },
+    shapes_2d:                    { label:"2D Shapes", year:2, prereqs:[] },
+    shapes_3d:                     { label:"3D Shapes", year:3, prereqs:[] },
+    angles:                        { label:"Angles", year:3, prereqs:[] },
+    coordinates:                   { label:"Coordinates", year:4, prereqs:[] },
+    pictograms_and_charts:        { label:"Pictograms & Bar Charts", year:2, prereqs:["addition_within_20"] },
+    mode_and_range:                { label:"Mode & Range", year:3, prereqs:["pictograms_and_charts"] },
+    mean_average:                  { label:"Mean (Average)", year:4, prereqs:["division_facts"] },
+    multiplication_word_problems: { label:"Multiplication Word Problems", year:2, prereqs:["multiplication_facts"] },
+    subtraction_word_problems:    { label:"Subtraction Word Problems", year:2, prereqs:["subtraction_within_20"] },
+    multi_step_word_problems:      { label:"Multi-Step Word Problems", year:3, prereqs:["multiplication_word_problems","subtraction_word_problems"] },
+    roman_numerals:                { label:"Roman Numerals", year:4, prereqs:[] },
+  },
+  english: {
+    nouns_and_verbs:              { label:"Nouns & Verbs", year:2, prereqs:[] },
+    adjectives_and_adverbs:        { label:"Adjectives & Adverbs", year:3, prereqs:["nouns_and_verbs"] },
+    pronouns_and_conjunctions:     { label:"Pronouns & Conjunctions", year:3, prereqs:["nouns_and_verbs"] },
+    prepositions_and_nouns:        { label:"Prepositions & Proper Nouns", year:4, prereqs:["nouns_and_verbs"] },
+    sentence_fragments:            { label:"Complete Sentences vs Fragments", year:2, prereqs:["nouns_and_verbs"] },
+    simple_and_compound_sentences: { label:"Simple & Compound Sentences", year:3, prereqs:["sentence_fragments"] },
+    joining_sentences:              { label:"Joining Sentences", year:4, prereqs:["simple_and_compound_sentences"] },
+    subordinate_clauses:            { label:"Subordinate Clauses", year:3, prereqs:["simple_and_compound_sentences"] },
+    fronted_adverbials:              { label:"Fronted Adverbials", year:4, prereqs:["subordinate_clauses"] },
+    capitals_and_full_stops:       { label:"Capital Letters & Full Stops", year:2, prereqs:[] },
+    question_marks:                 { label:"Question Marks", year:2, prereqs:["capitals_and_full_stops"] },
+    commas_in_lists:                 { label:"Commas in Lists", year:3, prereqs:["capitals_and_full_stops"] },
+    apostrophes:                     { label:"Apostrophes", year:3, prereqs:["capitals_and_full_stops"] },
+    speech_marks:                    { label:"Speech Marks", year:4, prereqs:["commas_in_lists"] },
+    past_tense:                    { label:"Past Tense", year:2, prereqs:[] },
+    progressive_tense:               { label:"Progressive Tense", year:3, prereqs:["past_tense"] },
+    future_tense:                    { label:"Future Tense", year:3, prereqs:["past_tense"] },
+    present_perfect_tense:            { label:"Present Perfect Tense", year:4, prereqs:["past_tense"] },
+    past_perfect_tense:               { label:"Past Perfect Tense", year:4, prereqs:["present_perfect_tense"] },
+    spelling_patterns:              { label:"Spelling Patterns", year:2, prereqs:[] },
+    synonyms:                        { label:"Synonyms", year:2, prereqs:[] },
+    antonyms:                        { label:"Antonyms", year:2, prereqs:[] },
+    prefixes:                        { label:"Prefixes", year:3, prereqs:["spelling_patterns"] },
+    suffixes:                        { label:"Suffixes", year:3, prereqs:["spelling_patterns"] },
+    homophones:                      { label:"Homophones", year:3, prereqs:["spelling_patterns"] },
+    powerful_vocabulary:              { label:"Powerful Vocabulary Choices", year:3, prereqs:["synonyms"] },
+    sentence_openers:                 { label:"Engaging Sentence Openers", year:3, prereqs:["simple_and_compound_sentences"] },
+    expanded_noun_phrases:             { label:"Expanded Noun Phrases", year:3, prereqs:["adjectives_and_adverbs"] },
+    cause_and_effect_sentences:        { label:"Cause & Effect Sentences", year:4, prereqs:["joining_sentences"] },
+    combining_sentences:               { label:"Combining Sentences", year:4, prereqs:["joining_sentences"] },
+    reading_literal:                { label:"Reading: Literal Comprehension", year:2, prereqs:[], pool:true },
+    reading_inference:                { label:"Reading: Inference", year:4, prereqs:["reading_literal"], pool:true },
+  },
+};
+// Descendant count (how many other skills, directly or indirectly, list
+// this skill as a prerequisite) — the "foundational importance" /
+// "blocks future learning" input to the priority score. Computed once from
+// the static graph, not per-call: the graph itself never changes at
+// runtime, only mastery does.
+const SKILL_DESCENDANTS = {};
+(function computeSkillDescendants(){
+  for(const subject of Object.keys(SKILLS)){
+    SKILL_DESCENDANTS[subject] = {};
+    const skills = SKILLS[subject];
+    for(const id of Object.keys(skills)) SKILL_DESCENDANTS[subject][id] = 0;
+    for(const id of Object.keys(skills)){
+      // Walk every OTHER skill's prereq chain; if `id` appears anywhere in
+      // it (direct or transitive), `id` gets credit for unlocking that skill.
+      for(const otherId of Object.keys(skills)){
+        if(otherId === id) continue;
+        const seen = new Set(); const stack = [...skills[otherId].prereqs];
+        let dependsOnId = false;
+        while(stack.length){
+          const p = stack.pop();
+          if(seen.has(p)) continue; seen.add(p);
+          if(p === id){ dependsOnId = true; break; }
+          stack.push(...(skills[p]?.prereqs || []));
+        }
+        if(dependsOnId) SKILL_DESCENDANTS[subject][id]++;
+      }
+    }
+  }
+})();
 
 /* ---------------------------------------------------------------------
    2. HELPERS
@@ -291,10 +378,13 @@ function introSentence(...terms){
    --------------------------------------------------------------------- */
 const G = { math:{}, english:{}, history:{} };
 
-// ---- MATH: Place Value ----
-// 9 tiers: Year2 Basic/Intermediate/Advanced, Year3 B/I/A, Year4 B/I/A —
-// number range and rounding granularity both step up smoothly.
-G.math.place_value = [
+// ---- MATH: content is organized by SKILL now, not by topic+tier. Each
+// skill's generator array is a small pool of randomized question functions
+// at roughly that skill's difficulty band — variety and challenge now come
+// from having many narrow skills interleaved by the scheduler, not from
+// scanning up through 9 internal tiers of one broad topic. ----
+
+G.math.place_value_basics = [
   () => { const n=randInt(11,40); const correct=Math.floor(n/10)*10;
     const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct+1,n]);
     return {q:`In the number ${n}, what is the value of the tens digit?`, options, correctIndex,
@@ -303,12 +393,16 @@ G.math.place_value = [
     const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct+1,n]);
     return {q:`In the number ${n}, what is the value of the tens digit?`, options, correctIndex,
       explain:`${n} = ${Math.floor(n/10)} tens and ${n%10} ones, so the tens digit is worth ${correct}.`}; },
+];
+G.math.rounding_to_10 = [
   () => { const n=randInt(11,99); const correct=Math.round(n/10)*10;
     const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,n]);
     return {q:`Round ${n} to the nearest 10.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
   () => { const n=randInt(100,999); const correct=Math.round(n/10)*10;
     const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,n]);
     return {q:`Round ${n} to the nearest 10.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
+];
+G.math.rounding_to_100 = [
   () => { const n=randInt(100,999); const correct=Math.round(n/100)*100;
     const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,n]);
     return {q:`Round ${n} to the nearest 100.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
@@ -318,6 +412,8 @@ G.math.place_value = [
   () => { const n=randInt(1000,9999); const correct=Math.round(n/100)*100;
     const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,n]);
     return {q:`Round ${n} to the nearest 100.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
+];
+G.math.rounding_to_1000 = [
   () => { const n=randInt(1000,9999); const correct=Math.round(n/1000)*1000;
     const {options,correctIndex}=makeMCQ(correct,[correct-1000,correct+1000,n]);
     return {q:`Round ${n} to the nearest 1,000.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
@@ -326,80 +422,101 @@ G.math.place_value = [
     return {q:`Round ${n} to the nearest 1,000.`, options, correctIndex, explain:`${n} rounds to ${correct}.`}; },
 ];
 
-// ---- MATH: Addition & Subtraction ----
-G.math.add_sub = [
+G.math.addition_within_20 = [
   () => { const a=randInt(1,9), b=randInt(1,9); const correct=a+b;
     const {options,correctIndex}=makeMCQ(correct,[correct-1,correct+1,correct-2,correct+2]);
     return {q:`${a} + ${b} = ?`, options, correctIndex, explain:`${a} + ${b} = ${correct}.`}; },
-  () => { const a=randInt(10,49), b=randInt(10,40); const correct=a+b;
-    const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-1,correct+1]);
+  () => { const a=randInt(5,15), b=randInt(2,9); const correct=a+b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-1,correct+1,correct-2,correct+2]);
     return {q:`${a} + ${b} = ?`, options, correctIndex, explain:`${a} + ${b} = ${correct}.`}; },
-  () => { const a=randInt(10,49), b=randInt(10,49); const useSub=Math.random()<0.5;
-    const correct = useSub ? Math.abs(a-b) : a+b;
+];
+G.math.subtraction_within_20 = [
+  () => { const a=randInt(5,18), b=randInt(1,a-1); const correct=a-b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-1,correct+1,correct-2,correct+2]);
+    return {q:`${a} - ${b} = ?`, options, correctIndex, explain:`${a} - ${b} = ${correct}.`}; },
+  () => { const a=randInt(10,20), b=randInt(1,9); const correct=a-b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-1,correct+1,correct-2,correct+2]);
+    return {q:`${a} - ${b} = ?`, options, correctIndex, explain:`${a} - ${b} = ${correct}.`}; },
+];
+// Regrouping (carrying) is forced by design: the ones digits always sum
+// to 10+, so Grayson can't sidestep the skill by using a non-carrying pair.
+G.math.addition_with_regrouping = [
+  () => { const aOnes=randInt(5,9), bOnes=randInt(10-aOnes,9);
+    const a=randInt(1,8)*10+aOnes, b=randInt(1,8)*10+bOnes; const correct=a+b;
     const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-1,correct+1]);
-    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
-      explain:`Answer: ${correct}.`}; },
-  () => { const a=randInt(20,89), b=randInt(15,79); const useSub=Math.random()<0.5;
-    const correct = useSub ? Math.abs(a-b) : a+b;
-    const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-1,correct+1]);
-    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
-      explain:`Answer: ${correct}.`}; },
-  () => { const a=randInt(100,499), b=randInt(100,499); const useSub=Math.random()<0.5;
-    const correct = useSub ? Math.abs(a-b) : a+b;
+    return {q:`${a} + ${b} = ?`, options, correctIndex,
+      explain:`${a} + ${b} = ${correct}. The ones (${aOnes}+${bOnes}=${aOnes+bOnes}) carry a ten over.`}; },
+  () => { const aOnes=randInt(5,9), bOnes=randInt(10-aOnes,9);
+    const a=randInt(10,80)*10+aOnes+randInt(0,0), b=randInt(2,8)*10+bOnes; const correct=a+b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,correct-10,correct+10]);
+    return {q:`${a} + ${b} = ?`, options, correctIndex,
+      explain:`${a} + ${b} = ${correct}. Line up the columns and carry any ten into the next column.`}; },
+];
+// Subtraction that forces borrowing across at least one zero digit (e.g.
+// 500 - 237) — the specific pattern JC named, which plain "3-digit
+// subtraction" doesn't reliably exercise.
+G.math.subtraction_across_zeros = [
+  () => { const hundreds=randInt(3,9); const a=hundreds*100; const b=randInt(a-99,a-1);
+    const correct=a-b;
     const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-100,correct+100]);
-    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
-      explain:`Answer: ${correct}.`}; },
-  () => { const a=randInt(100,899), b=randInt(100,899); const useSub=Math.random()<0.5;
-    const correct = useSub ? Math.abs(a-b) : a+b;
+    return {q:`${a} - ${b} = ?`, options, correctIndex,
+      explain:`${a} - ${b} = ${correct}. Borrowing from a zero means borrowing from the next column along too.`}; },
+  () => { const thousands=randInt(2,9); const a=thousands*1000+randInt(0,9); const b=randInt(a-999,a-100);
+    const correct=a-b;
     const {options,correctIndex}=makeMCQ(correct,[correct-10,correct+10,correct-100,correct+100]);
-    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
-      explain:`Answer: ${correct}.`}; },
-  () => { const a=randInt(300,999), b=randInt(200,900); const useSub=Math.random()<0.5;
-    const correct = useSub ? Math.abs(a-b) : a+b;
+    return {q:`${a} - ${b} = ?`, options, correctIndex,
+      explain:`${a} - ${b} = ${correct}. When the digit you're borrowing from is 0, borrow from further left first.`}; },
+];
+G.math.column_addition = [
+  () => { const a=randInt(1000,8999), b=randInt(100,999); const correct=a+b;
     const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,correct-10,correct+10]);
-    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
-      explain:`Answer: ${correct}.`}; },
-  () => { const a=randInt(1000,8999), b=randInt(100,999); const useSub=Math.random()<0.5;
-    const correct = useSub ? a-b : a+b;
+    return {q:`${a} + ${b} = ?`, options, correctIndex, explain:`${a} + ${b} = ${correct}.`}; },
+  () => { const a=randInt(1000,9999), b=randInt(1000,9999); const correct=a+b;
     const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,correct-10,correct+10]);
-    return {q: useSub?`${a} - ${b} = ?`:`${a} + ${b} = ?`, options, correctIndex, explain:`Answer: ${correct}.`}; },
-  () => { const a=randInt(1000,9999), b=randInt(1000,9999); const useSub=Math.random()<0.5;
-    const correct = useSub ? Math.abs(a-b) : a+b;
+    return {q:`${a} + ${b} = ?`, options, correctIndex, explain:`${a} + ${b} = ${correct}.`}; },
+];
+G.math.column_subtraction = [
+  () => { const a=randInt(1000,8999), b=randInt(100,999); const correct=a-b;
     const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,correct-10,correct+10]);
-    return {q: useSub?`${Math.max(a,b)} - ${Math.min(a,b)} = ?`:`${a} + ${b} = ?`, options, correctIndex,
-      explain:`Answer: ${correct}.`}; },
+    return {q:`${a} - ${b} = ?`, options, correctIndex, explain:`${a} - ${b} = ${correct}.`}; },
+  () => { const a=randInt(2000,9999), b=randInt(1000,a-1); const correct=a-b;
+    const {options,correctIndex}=makeMCQ(correct,[correct-100,correct+100,correct-10,correct+10]);
+    return {q:`${a} - ${b} = ?`, options, correctIndex, explain:`${a} - ${b} = ${correct}.`}; },
 ];
 
-// ---- MATH: Multiplication & Division ----
-G.math.mult_div = [
+G.math.multiplication_facts = [
   () => { const table=pick([2,5,10]); const n=randInt(1,10); const correct=table*n;
     const {options,correctIndex}=makeMCQ(correct,[correct-table,correct+table,correct+1]);
     return {q:`${table} × ${n} = ?`, options, correctIndex, explain:`${table} × ${n} = ${correct}.`}; },
-  () => { const table=pick([2,5,10]); const n=randInt(1,12); const correct=table*n;
+  () => { const table=randInt(2,12); const n=randInt(1,12); const correct=table*n;
     const {options,correctIndex}=makeMCQ(correct,[correct-table,correct+table,correct+1]);
     return {q:`${table} × ${n} = ?`, options, correctIndex, explain:`${table} × ${n} = ${correct}.`}; },
-  () => { const table=randInt(2,12); const n=randInt(1,12); const isDiv=Math.random()<0.4;
-    if(isDiv){ const correct=n; const product=table*n;
-      const {options,correctIndex}=makeMCQ(correct,[correct-1,correct+1,correct+2]);
-      return {q:`${product} ÷ ${table} = ?`, options, correctIndex, explain:`${product} ÷ ${table} = ${correct}.`}; }
-    const correct=table*n;
-    const {options,correctIndex}=makeMCQ(correct,[correct-table,correct+table,correct+1]);
-    return {q:`${table} × ${n} = ?`, options, correctIndex, explain:`${table} × ${n} = ${correct}.`}; },
+];
+G.math.division_facts = [
+  () => { const table=randInt(2,10); const n=randInt(1,10); const product=table*n; const correct=n;
+    const {options,correctIndex}=makeMCQ(correct,[correct-1,correct+1,correct+2]);
+    return {q:`${product} ÷ ${table} = ?`, options, correctIndex, explain:`${product} ÷ ${table} = ${correct}.`}; },
+  () => { const table=randInt(2,12); const n=randInt(1,12); const product=table*n; const correct=n;
+    const {options,correctIndex}=makeMCQ(correct,[correct-1,correct+1,correct+2]);
+    return {q:`${product} ÷ ${table} = ?`, options, correctIndex, explain:`${product} ÷ ${table} = ${correct}.`}; },
+];
+G.math.multiplication_2digit = [
   () => { const a=randInt(11,29), b=randInt(2,9); const correct=a*b;
-    const {options,correctIndex}=makeMCQ(correct,[correct-b,correct+b,correct-a]);
-    return {q:`${a} × ${b} = ?`, options, correctIndex, explain:`${a} × ${b} = ${correct}.`}; },
-  () => { const a=randInt(11,49), b=randInt(2,9); const correct=a*b;
     const {options,correctIndex}=makeMCQ(correct,[correct-b,correct+b,correct-a]);
     return {q:`${a} × ${b} = ?`, options, correctIndex, explain:`${a} × ${b} = ${correct}.`}; },
   () => { const a=randInt(20,79), b=randInt(3,9); const correct=a*b;
     const {options,correctIndex}=makeMCQ(correct,[correct-b,correct+b,correct-a]);
     return {q:`${a} × ${b} = ?`, options, correctIndex, explain:`${a} × ${b} = ${correct}.`}; },
+];
+G.math.division_with_remainders = [
   () => { const divisor=randInt(3,9); const quotient=randInt(4,15); const rem=randInt(1,divisor-1);
     const dividend=divisor*quotient+rem; const correct=`${quotient} r${rem}`;
     const wrongs=[`${quotient} r${(rem+1)%divisor}`,`${quotient+1} r${rem}`,`${quotient-1} r${rem}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`${dividend} ÷ ${divisor} = ? (give remainder)`, options, correctIndex,
       explain:`${divisor} × ${quotient} = ${divisor*quotient}, remainder ${rem}.`}; },
+];
+G.math.multiplication_large_numbers = [
   () => { const a=randInt(100,299), b=randInt(2,9); const correct=a*b;
     const {options,correctIndex}=makeMCQ(correct,[correct-b,correct+b,correct-a]);
     return {q:`${a} × ${b} = ?`, options, correctIndex, explain:`${a} × ${b} = ${correct}.`}; },
@@ -408,9 +525,8 @@ G.math.mult_div = [
     return {q:`${a} × ${b} = ?`, options, correctIndex, explain:`${a} × ${b} = ${correct}.`}; },
 ];
 
-// ---- MATH: Fractions & Decimals ----
-G.math.fractions = [
-  () => { const denom=2; const noun=pick(["shape","pizza","cake","chocolate bar","sandwich","orange","apple","cookie","pie","banana","granola bar","brownie","pancake","waffle","tortilla"]); const correct=`1/${denom}`;
+G.math.understanding_fractions = [
+  () => { const denom=2; const noun=pick(["shape","pizza","cake","chocolate bar","sandwich","orange","apple","cookie","pie","banana"]); const correct=`1/${denom}`;
     const wrongs=[`1/4`,`${denom-1}/${denom}`,`2/${denom}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
     return {q:`A ${noun} is split into ${denom} equal parts and 1 part is shaded. What fraction is shaded?`,
@@ -420,6 +536,8 @@ G.math.fractions = [
     const {options,correctIndex}=makeMCQ(correct,wrongs);
     return {q:`A ${noun} is split into ${denom} equal parts and 1 part is shaded. What fraction is shaded?`,
       options, correctIndex, explain:`1 shaded part out of ${denom} equal parts = 1/${denom}.`}; },
+];
+G.math.equivalent_fractions = [
   () => { const denom=randInt(2,9); const mult=randInt(2,3);
     const correct=`${1*mult}/${denom*mult}`;
     const wrongs=[`1/${denom}`,`${mult}/${denom}`,`${1*mult}/${denom+mult}`];
@@ -434,50 +552,76 @@ G.math.fractions = [
     const phrasing = pick([`Which fraction is equivalent to 1/${denom}?`,`Which of these fractions equals 1/${denom}?`]);
     return {q:phrasing, options, correctIndex,
       explain:`Multiply top and bottom by ${mult}: 1/${denom} = ${1*mult}/${denom*mult}.`}; },
+];
+G.math.fraction_of_amount = [
   () => { const denom=pick([2,4]); const whole=randInt(20,60); const correct=(whole/denom);
     const {options,correctIndex}=makeMCQ(correct,[correct+denom,correct-denom,whole/2]);
     return {q:`What is 1/${denom} of ${whole}?`, options, correctIndex, explain:`${whole} ÷ ${denom} = ${correct}.`}; },
   () => { const denom=pick([2,4,5,10]); const whole=randInt(20,100); const correct=(whole/denom);
     const {options,correctIndex}=makeMCQ(correct,[correct+denom,correct-denom,whole/2]);
     return {q:`What is 1/${denom} of ${whole}?`, options, correctIndex, explain:`${whole} ÷ ${denom} = ${correct}.`}; },
+  () => { const denom=pick([3,6,8]); const whole=randInt(30,120); const correct=(whole/denom);
+    const {options,correctIndex}=makeMCQ(correct,[correct+denom,correct-denom,whole/2]);
+    return {q:`What is 1/${denom} of ${whole}?`, options, correctIndex, explain:`${whole} ÷ ${denom} = ${correct}.`}; },
+];
+G.math.comparing_fractions = [
+  () => { const denom=randInt(3,10); const a=randInt(1,denom-2), b=randInt(a+1,denom-1);
+    const correct=`${b}/${denom}`;
+    const {options,correctIndex}=makeMCQ(correct,[`${a}/${denom}`],(x)=>String(x));
+    return {q:`Which fraction is bigger: ${a}/${denom} or ${b}/${denom}?`, options, correctIndex,
+      explain:`Same bottom number (denominator), so compare the top numbers: ${b} > ${a}, so ${b}/${denom} is bigger.`}; },
+  () => { const a=pick([2,3,4]), b=pick([5,6,8,10].filter(x=>x!==a)); const correct = a<b?`1/${a}`:`1/${b}`;
+    const other = a<b?`1/${b}`:`1/${a}`;
+    const {options,correctIndex}=makeMCQ(correct,[other],(x)=>String(x));
+    return {q:`Which fraction is bigger: 1/${a} or 1/${b}?`, options, correctIndex,
+      explain:`The smaller the bottom number, the bigger each part is — so ${correct} is bigger.`}; },
+];
+G.math.fractions_on_number_line = [
+  () => { const denom=pick([2,4]); const num=randInt(1,denom-1); const correct=`${num}/${denom}`;
+    const posPct = Math.round((num/denom)*100);
+    // Build wrongs from a pool of candidate fractions rather than a fixed
+    // 2-item list — when denom=2, num is always 1, so both `${denom-num}/${denom}`
+    // and `1/${denom}` collapse to the same string as correct ("1/2"), leaving
+    // zero valid wrong options and crashing makeMCQ. Drawing from a larger,
+    // deduped candidate pool guarantees at least 2 distinct wrongs regardless
+    // of denom/num.
+    const candidates = [];
+    for(let n=1;n<denom;n++) if(n!==num) candidates.push(`${n}/${denom}`);
+    candidates.push(`${num}/${denom===2?4:2}`, `${denom-num}/${denom+1}`, `1/${denom+1}`);
+    const wrongs = [...new Set(candidates)].filter(w=>w!==correct).slice(0,2);
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`A number line goes from 0 to 1. A mark sits ${posPct}% of the way along. Which fraction is that?`,
+      options, correctIndex, explain:`${posPct}% of the way from 0 to 1 = ${correct}.`}; },
+  () => { const denom=pick([2,3,4]); const num=randInt(1,denom-1); const correct=`${num}/${denom}`;
+    const wrongs=[`${num}/${denom+1}`,`${num+1}/${denom}`].filter(w=>w!==correct);
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`A number line from 0 to 1 is split into ${denom} equal parts. Which fraction is at the ${num}${num===1?"st":num===2?"nd":num===3?"rd":"th"} mark after 0?`,
+      options, correctIndex, explain:`${num} parts out of ${denom} equal parts = ${correct}.`}; },
+];
+G.math.decimals = [
   () => { const tenths=randInt(1,9); const correct=`0.${tenths}`;
     const wrongs=[`${tenths}.0`,`0.0${tenths}`,`1.${tenths}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
     const phrasing = pick([`Write ${tenths}/10 as a decimal.`,`What is ${tenths} tenths written as a decimal?`,`Express ${tenths}/10 in decimal form.`]);
     return {q:phrasing, options, correctIndex, explain:`${tenths}/10 = 0.${tenths}.`}; },
-  () => { const denom=pick([3,6,8]); const whole=randInt(30,120); const correct=(whole/denom);
-    const {options,correctIndex}=makeMCQ(correct,[correct+denom,correct-denom,whole/2]);
-    return {q:`What is 1/${denom} of ${whole}?`, options, correctIndex, explain:`${whole} ÷ ${denom} = ${correct}.`}; },
   () => { const hundredths=randInt(1,99); const correct=`0.${hundredths.toString().padStart(2,"0")}`;
     const wrongs=[`${hundredths}.0`,`0.${hundredths}0`,`1.${hundredths.toString().padStart(2,"0")}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Write ${hundredths}/100 as a decimal.`, options, correctIndex, explain:`${hundredths}/100 = ${correct}.`}; },
 ];
 
-// ---- MATH: Measurement, Time & Money ----
-G.math.measurement = [
+G.math.telling_time = [
   () => { const h=randInt(1,12); const correct=`${h} o'clock`;
     const wrongs=[`${h===12?1:h+1} o'clock`,`Half past ${h}`,`Quarter past ${h}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
     const phrasing = pick([`The clock shows ${h}:00. What time is this?`,`It's ${h}:00. How do you say this time?`]);
-    return {q:phrasing, options, correctIndex,
-      explain:`${h}:00 is "${correct}".`}; },
+    return {q:phrasing, options, correctIndex, explain:`${h}:00 is "${correct}".`}; },
   () => { const h=randInt(1,12); const half=Math.random()<0.5;
     const correct = half ? `Half past ${h}` : `${h} o'clock`;
     const wrongs = [`Half past ${h===12?1:h+1}`,`${h===12?1:h+1} o'clock`,`Quarter past ${h}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs);
     return {q:`The clock shows ${h}:${half?"30":"00"}. What time is this?`, options, correctIndex,
       explain:`${h}:${half?"30":"00"} is "${correct}".`}; },
-  () => { const pounds=randInt(1,9), pence=pick([0,50]); const correct=`£${pounds}.${pence.toString().padStart(2,"0")}`;
-    const wrongs=[`£${pounds+1}.${pence.toString().padStart(2,"0")}`,`£${pounds}.${pence===0?"50":"00"}`,`£${pounds+1}.00`];
-    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q:`I have coins worth £${pounds}.${pence.toString().padStart(2,"0")} in total. How is that written?`,
-      options, correctIndex, explain:`Written as ${correct}.`}; },
-  () => { const pounds=randInt(1,9), pence=pick([0,25,50,75]); const correct=`£${pounds}.${pence.toString().padStart(2,"0")}`;
-    const wrongs=[`£${pounds+1}.${pence.toString().padStart(2,"0")}`,`£${pounds}.${(100-pence)===100?"00":(100-pence)}`,`£${pounds}.${pence===0?"50":"00"}`];
-    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q:`I have coins worth £${pounds}.${pence.toString().padStart(2,"0")} in total. How is that written?`,
-      options, correctIndex, explain:`Written as ${correct}.`}; },
   () => { const h=randInt(13,20); const m=pick([0,30]); const period="pm";
     const h12 = h%12===0?12:h%12; const correct=`${h12}:${m.toString().padStart(2,"0")} ${period}`;
     const wrongs=[`${h12}:${m.toString().padStart(2,"0")} am`,`${h12===12?1:h12+1}:${m.toString().padStart(2,"0")} ${period}`];
@@ -490,6 +634,20 @@ G.math.measurement = [
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Convert ${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")} (24-hour) to 12-hour time.`,
       options, correctIndex, explain:`${h}:${m} in 24hr = ${correct}.`}; },
+];
+G.math.money = [
+  () => { const pounds=randInt(1,9), pence=pick([0,50]); const correct=`£${pounds}.${pence.toString().padStart(2,"0")}`;
+    const wrongs=[`£${pounds+1}.${pence.toString().padStart(2,"0")}`,`£${pounds}.${pence===0?"50":"00"}`,`£${pounds+1}.00`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`I have coins worth £${pounds}.${pence.toString().padStart(2,"0")} in total. How is that written?`,
+      options, correctIndex, explain:`Written as ${correct}.`}; },
+  () => { const pounds=randInt(1,9), pence=pick([0,25,50,75]); const correct=`£${pounds}.${pence.toString().padStart(2,"0")}`;
+    const wrongs=[`£${pounds+1}.${pence.toString().padStart(2,"0")}`,`£${pounds}.${(100-pence)===100?"00":(100-pence)}`,`£${pounds}.${pence===0?"50":"00"}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`I have coins worth £${pounds}.${pence.toString().padStart(2,"0")} in total. How is that written?`,
+      options, correctIndex, explain:`Written as ${correct}.`}; },
+];
+G.math.perimeter = [
   () => { const l=randInt(3,9), w=randInt(2,9); const correct=2*(l+w);
     const {options,correctIndex}=makeMCQ(correct,[l*w,correct+2,correct-2]);
     return {q:`A rectangle is ${l}cm by ${w}cm. What is its perimeter?`, options, correctIndex,
@@ -498,40 +656,69 @@ G.math.measurement = [
     const {options,correctIndex}=makeMCQ(correct,[l*w,correct+2,correct-2]);
     return {q:`A rectangle is ${l}cm by ${w}cm. What is its perimeter?`, options, correctIndex,
       explain:`Perimeter = 2×(${l}+${w}) = ${correct}cm.`}; },
+];
+G.math.area = [
   () => { const l=randInt(3,12), w=randInt(3,12); const correct=l*w;
     const {options,correctIndex}=makeMCQ(correct,[2*(l+w),correct+l,correct-w]);
     return {q:`A rectangle is ${l}cm by ${w}cm. What is its area?`, options, correctIndex,
       explain:`Area = ${l} × ${w} = ${correct}cm².`}; },
+  () => { const side=randInt(3,15); const correct=side*side;
+    const {options,correctIndex}=makeMCQ(correct,[side*4,correct+side,correct-side]);
+    return {q:`A square has sides of ${side}cm. What is its area?`, options, correctIndex,
+      explain:`Area = ${side} × ${side} = ${correct}cm².`}; },
 ];
 
-// ---- MATH: Geometry ----
 const SHAPES2D = [["triangle",3],["square",4],["pentagon",5],["hexagon",6],["rectangle",4],["octagon",8],["heptagon",7]];
 const SHAPES2D_BASIC = [["triangle",3],["square",4],["pentagon",5],["rectangle",4],["hexagon",6]];
 const SHAPES3D = [["cube",6],["cuboid",6],["sphere",0],["cylinder",2],["cone",1],["square pyramid",5]];
 const SHAPES3D_BASIC = [["cube",6],["sphere",0],["cylinder",2],["cone",1]];
 const SIDES_PHRASINGS = (name) => [`How many sides does a ${name} have?`,`A ${name} has how many sides?`,`Can you tell me how many sides a ${name} has?`];
 const FACES_PHRASINGS = (name) => [`How many faces does a ${name} have?`,`A ${name} has how many faces?`,`Can you tell me how many faces a ${name} has?`];
-G.math.geometry = [
+const SHAPE_RIDDLES_2D = [
+  ["A shape has 4 equal sides and 4 right angles. What shape is it?","Square",["Rectangle","Triangle","Pentagon"],"A square has 4 equal sides and 4 right angles — a rectangle has 4 right angles but not always equal sides."],
+  ["A shape has 4 right angles but its sides aren't all equal. What shape is it?","Rectangle",["Square","Triangle","Hexagon"],"A rectangle has 4 right angles like a square, but only opposite sides match — a square's sides are ALL equal."],
+  ["A shape has 3 sides and 3 angles. What shape is it?","Triangle",["Square","Pentagon","Hexagon"],"A triangle is the only shape with exactly 3 sides and 3 angles."],
+  ["A shape has 0 straight sides and no corners at all. What shape is it?","Circle",["Square","Triangle","Octagon"],"A circle is perfectly round with no straight sides or corners."],
+  ["A shape has 5 sides and 5 angles. What shape is it?","Pentagon",["Hexagon","Square","Octagon"],"A pentagon has exactly 5 sides and 5 angles."],
+  ["A shape has 6 sides and 6 angles. What shape is it?","Hexagon",["Pentagon","Heptagon","Octagon"],"A hexagon has exactly 6 sides and 6 angles."],
+  ["A shape has 8 sides and 8 angles. What shape is it?","Octagon",["Hexagon","Heptagon","Pentagon"],"An octagon has exactly 8 sides and 8 angles."],
+];
+const SHAPE_RIDDLES_3D = [
+  ["A 3D shape has 6 flat square faces and looks like a dice. What shape is it?","Cube",["Cuboid","Sphere","Cylinder"],"A cube has 6 equal square faces, like a dice."],
+  ["A 3D shape is perfectly round with no faces, edges, or corners. What shape is it?","Sphere",["Cube","Cylinder","Cone"],"A sphere is perfectly round all over, like a ball."],
+  ["A 3D shape has 2 flat circular ends and one curved surface, like a can. What shape is it?","Cylinder",["Cone","Sphere","Cube"],"A cylinder has 2 flat circular ends joined by a curved side, like a tin can."],
+  ["A 3D shape has a circular base and comes to a single point at the top, like an ice cream. What shape is it?","Cone",["Cylinder","Sphere","Square pyramid"],"A cone has one circular base and narrows to a point, like an ice cream cone."],
+  ["A 3D shape has 6 rectangular faces but isn't a perfect cube. What shape is it?","Cuboid",["Cube","Sphere","Cylinder"],"A cuboid has 6 rectangular faces, like a cube but not all sides equal."],
+];
+G.math.shapes_2d = [
   () => { const [name,sides]=pick(SHAPES2D_BASIC); const correct=sides;
     const {options,correctIndex}=makeMCQ(correct,[sides-1,sides+1,sides+2]);
     return {q:pick(SIDES_PHRASINGS(name)), options, correctIndex, explain:`A ${name} has ${sides} sides.`}; },
   () => { const [name,sides]=pick(SHAPES2D); const correct=sides;
     const {options,correctIndex}=makeMCQ(correct,[sides-1,sides+1,sides+2]);
     return {q:pick(SIDES_PHRASINGS(name)), options, correctIndex, explain:`A ${name} has ${sides} sides.`}; },
+  () => { const [q,correct,wrongs,explain]=pick(SHAPE_RIDDLES_2D);
+    const {options,correctIndex}=makeMCQ(correct,wrongs);
+    return {q, options, correctIndex, explain}; },
+];
+G.math.shapes_3d = [
   () => { const [name,faces]=pick(SHAPES3D_BASIC); const correct=faces;
     const otherFaceCounts = SHAPES3D_BASIC.filter(s=>s[0]!==name).map(s=>s[1]);
     const {options,correctIndex}=makeMCQ(correct, otherFaceCounts);
     return {q:pick(FACES_PHRASINGS(name)), options, correctIndex, explain:`A ${name} has ${faces} faces.`}; },
   () => { const [name,faces]=pick(SHAPES3D); const correct=faces;
-    // Distractors are other real shapes' face counts (always >= 0) rather than
-    // arithmetic offsets, which could otherwise land on nonsense like "-1 faces".
     const otherFaceCounts = SHAPES3D.filter(s=>s[0]!==name).map(s=>s[1]);
     const {options,correctIndex}=makeMCQ(correct, otherFaceCounts);
     return {q:pick(FACES_PHRASINGS(name)), options, correctIndex, explain:`A ${name} has ${faces} faces.`}; },
+  () => { const [q,correct,wrongs,explain]=pick(SHAPE_RIDDLES_3D);
+    const {options,correctIndex}=makeMCQ(correct,wrongs);
+    return {q, options, correctIndex, explain}; },
+];
+G.math.angles = [
   () => { const angle=pick(["acute","right"]); const desc={acute:"less than 90°", right:"exactly 90°"};
     const wrongOpts = Object.keys(desc).filter(k=>k!==angle);
     const {options,correctIndex}=makeMCQ(desc[angle], wrongOpts.map(k=>desc[k]));
-    const phrasing = pick([`What describes a ${angle} angle?`,`Which best describes a ${angle} angle?`,`An angle that is ${desc[angle]} is called what?`,`How would you describe a ${angle} angle?`,`Which phrase fits a ${angle} angle?`,`A ${angle} angle measures what?`]);
+    const phrasing = pick([`What describes a ${angle} angle?`,`Which best describes a ${angle} angle?`,`An angle that is ${desc[angle]} is called what?`]);
     return {q:phrasing, options, correctIndex, explain:`A ${angle} angle is ${desc[angle]}.`}; },
   () => { const angle=pick(["acute","right","obtuse","reflex"]); const desc={
       acute:"less than 90°", right:"exactly 90°", obtuse:"between 90° and 180°", reflex:"more than 180°"};
@@ -539,6 +726,8 @@ G.math.geometry = [
     const {options,correctIndex}=makeMCQ(desc[angle], wrongOpts.map(k=>desc[k]));
     const phrasing = pick([`What describes a ${angle} angle?`,`Which best describes a ${angle} angle?`,`An angle that is ${desc[angle]} is called what?`]);
     return {q:phrasing, options, correctIndex, explain:`A ${angle} angle is ${desc[angle]}.`}; },
+];
+G.math.coordinates = [
   () => { const x=randInt(1,4), y=randInt(1,4); const correct=`(${x}, ${y})`;
     const wrongs=[`(${y}, ${x})`,`(${x+1}, ${y})`,`(${x}, ${y+1})`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(v)=>String(v));
@@ -549,39 +738,18 @@ G.math.geometry = [
     const {options,correctIndex}=makeMCQ(correct,wrongs,(v)=>String(v));
     return {q:`A point is ${x} across and ${y} up from the origin. What are its coordinates?`,
       options, correctIndex, explain:`Coordinates are written (across, up) = ${correct}.`}; },
-  () => { const riddles=[
-      ["A shape has 4 equal sides and 4 right angles. What shape is it?","Square",["Rectangle","Triangle","Pentagon"],"A square has 4 equal sides and 4 right angles — a rectangle has 4 right angles but not always equal sides."],
-      ["A shape has 4 right angles but its sides aren't all equal. What shape is it?","Rectangle",["Square","Triangle","Hexagon"],"A rectangle has 4 right angles like a square, but only opposite sides match — a square's sides are ALL equal."],
-      ["A shape has 3 sides and 3 angles. What shape is it?","Triangle",["Square","Pentagon","Hexagon"],"A triangle is the only shape with exactly 3 sides and 3 angles."],
-      ["A shape has 0 straight sides and no corners at all. What shape is it?","Circle",["Square","Triangle","Octagon"],"A circle is perfectly round with no straight sides or corners."],
-      ["A shape has 5 sides and 5 angles. What shape is it?","Pentagon",["Hexagon","Square","Octagon"],"A pentagon has exactly 5 sides and 5 angles."],
-      ["A shape has 6 sides and 6 angles. What shape is it?","Hexagon",["Pentagon","Heptagon","Octagon"],"A hexagon has exactly 6 sides and 6 angles."],
-      ["A shape has 8 sides and 8 angles. What shape is it?","Octagon",["Hexagon","Heptagon","Pentagon"],"An octagon has exactly 8 sides and 8 angles."],
-      ["A 3D shape has 6 flat square faces and looks like a dice. What shape is it?","Cube",["Cuboid","Sphere","Cylinder"],"A cube has 6 equal square faces, like a dice."],
-      ["A 3D shape is perfectly round with no faces, edges, or corners. What shape is it?","Sphere",["Cube","Cylinder","Cone"],"A sphere is perfectly round all over, like a ball."],
-      ["A 3D shape has 2 flat circular ends and one curved surface, like a can. What shape is it?","Cylinder",["Cone","Sphere","Cube"],"A cylinder has 2 flat circular ends joined by a curved side, like a tin can."],
-      ["A 3D shape has a circular base and comes to a single point at the top, like an ice cream. What shape is it?","Cone",["Cylinder","Sphere","Square pyramid"],"A cone has one circular base and narrows to a point, like an ice cream cone."],
-      ["A 3D shape has 6 rectangular faces but isn't a perfect cube. What shape is it?","Cuboid",["Cube","Sphere","Cylinder"],"A cuboid has 6 rectangular faces, like a cube but not all sides equal."],
-    ];
-    const [q,correct,wrongs,explain]=pick(riddles);
-    const {options,correctIndex}=makeMCQ(correct,wrongs);
-    return {q, options, correctIndex, explain}; },
 ];
 
-// ---- MATH: Statistics ----
-G.math.statistics = [
+G.math.pictograms_and_charts = [
   () => { const vals = shuffle([2,3,4,5,6]).slice(0,3);
     const max=Math.max(...vals); const labels=["Item 1","Item 2","Item 3"];
     const correctLabel = labels[vals.indexOf(max)]; const shuffled = shuffle(labels);
     return {q:`A pictogram shows: Item 1 = ${vals[0]} symbols, Item 2 = ${vals[1]} symbols, Item 3 = ${vals[2]} symbols. Which item has the most?`,
       options: shuffled, correctIndex: shuffled.indexOf(correctLabel),
       explain:`${correctLabel} has the most, with ${max} symbols.`}; },
-  () => { // pictogram: 4 DISTINCT values so there's always exactly one right answer (no ties)
-    const vals = shuffle([2,3,4,5,6,7,8,9,10,11]).slice(0,4); // drawn without replacement -> distinct
-    const max=Math.max(...vals);
-    const labels=["Item 1","Item 2","Item 3","Item 4"];
-    const correctLabel = labels[vals.indexOf(max)];
-    const shuffled = shuffle(labels);
+  () => { const vals = shuffle([2,3,4,5,6,7,8,9,10,11]).slice(0,4);
+    const max=Math.max(...vals); const labels=["Item 1","Item 2","Item 3","Item 4"];
+    const correctLabel = labels[vals.indexOf(max)]; const shuffled = shuffle(labels);
     return {q:`A pictogram shows: Item 1 = ${vals[0]} symbols, Item 2 = ${vals[1]} symbols, Item 3 = ${vals[2]} symbols, Item 4 = ${vals[3]} symbols. Which item has the most?`,
       options: shuffled, correctIndex: shuffled.indexOf(correctLabel),
       explain:`${correctLabel} has the most, with ${max} symbols.`}; },
@@ -590,21 +758,11 @@ G.math.statistics = [
     const {options,correctIndex}=makeMCQ(total,[total-2,total+2,total-1]);
     return {q:`A bar chart shows 3 bars with values ${vals.join(", ")}. What is the total?`, options, correctIndex,
       explain:`${vals.join(" + ")} = ${total}.`}; },
-  () => { const vals=[randInt(3,10),randInt(3,10),randInt(3,10),randInt(3,10)];
-    const total=vals.reduce((a,b)=>a+b,0);
-    const {options,correctIndex}=makeMCQ(total,[total-2,total+2,total-1]);
-    return {q:`A bar chart shows 4 bars with values ${vals.join(", ")}. What is the total?`, options, correctIndex,
-      explain:`${vals.join(" + ")} = ${total}.`}; },
+];
+G.math.mode_and_range = [
   () => { const sets=[[2,2,3,4],[5,6,6,7],[1,1,2,3],[8,9,9,10],[3,4,4,5],[6,7,7,8],[2,3,3,5],[7,8,8,9],[1,2,2,4],[9,10,10,11],[4,4,5,6],[10,11,11,12]];
     const vals=pick(sets); const correct=vals[0]===vals[1]?vals[0]:vals[1];
     const others=[...new Set(vals)].filter(v=>v!==correct);
-    const {options,correctIndex}=makeMCQ(correct,others);
-    return {q:`In the data set ${vals.join(", ")}, which number appears most often (the mode)?`, options, correctIndex,
-      explain:`${correct} appears most often, so the mode is ${correct}.`}; },
-  () => { const sets=[[2,3,3,4,5,3],[1,2,2,2,4,5],[6,7,8,7,7,9],[3,3,3,5,6,7],[4,5,6,5,5,8],[9,9,9,10,11,12],[2,4,4,4,6,7],[5,6,6,6,8,9],[3,4,5,4,4,7],[8,8,8,9,10,11],[1,3,3,3,5,6],[7,9,9,9,10,12]];
-    const vals=pick(sets); const counts={}; vals.forEach(v=>counts[v]=(counts[v]||0)+1);
-    const correct=Number(Object.keys(counts).reduce((a,b)=>counts[a]>counts[b]?a:b));
-    const others=[...new Set(vals)].filter(v=>v!==correct).slice(0,3);
     const {options,correctIndex}=makeMCQ(correct,others);
     return {q:`In the data set ${vals.join(", ")}, which number appears most often (the mode)?`, options, correctIndex,
       explain:`${correct} appears most often, so the mode is ${correct}.`}; },
@@ -616,22 +774,29 @@ G.math.statistics = [
     const {options,correctIndex}=makeMCQ(range,[range+1,range-1,Math.max(...vals)]);
     return {q:`A data set has values ${vals.join(", ")}. What is the range (highest minus lowest)?`, options, correctIndex,
       explain:`${Math.max(...vals)} - ${Math.min(...vals)} = ${range}.`}; },
+];
+G.math.mean_average = [
   () => { const mid=randInt(3,30); const vals=[mid-2,mid,mid+2]; const total=vals.reduce((a,b)=>a+b,0); const correct=total/3;
     const {options,correctIndex}=makeMCQ(correct,[correct+1,correct-1,total]);
     return {q:`What is the mean (average) of ${vals.join(", ")}?`, options, correctIndex,
       explain:`(${vals.join(" + ")}) ÷ 3 = ${correct}.`}; },
+  () => { const vals=[randInt(2,10),randInt(2,10),randInt(2,10),randInt(2,10)]; const total=vals.reduce((a,b)=>a+b,0); const correct=total/4;
+    const {options,correctIndex}=makeMCQ(correct,[correct+1,correct-1,total]);
+    return {q:`What is the mean (average) of ${vals.join(", ")}?`, options, correctIndex,
+      explain:`(${vals.join(" + ")}) ÷ 4 = ${correct}.`}; },
 ];
 
-// ---- MATH: Reasoning / word problems ----
-G.math.reasoning = [
+G.math.multiplication_word_problems = [
   () => { const price=randInt(2,6); const qty=randInt(2,5); const correct=price*qty;
     const {options,correctIndex}=makeMCQ(correct,[correct+price,correct-price,price+qty]);
     return {q:`Toy cars cost £${price} each. How much for ${qty} toy cars?`, options, correctIndex,
       explain:`${qty} × £${price} = £${correct}.`}; },
-  () => { const price=randInt(2,9); const qty=randInt(2,6); const correct=price*qty;
-    const {options,correctIndex}=makeMCQ(correct,[correct+price,correct-price,price+qty]);
-    return {q:`Toy cars cost £${price} each. How much for ${qty} toy cars?`, options, correctIndex,
-      explain:`${qty} × £${price} = £${correct}.`}; },
+  () => { const rows=randInt(3,6), cols=randInt(3,6); const correct=rows*cols;
+    const {options,correctIndex}=makeMCQ(correct,[correct+rows,correct-cols,rows+cols]);
+    return {q:`Lego bricks are arranged in ${rows} rows of ${cols}. How many bricks in total?`, options, correctIndex,
+      explain:`${rows} × ${cols} = ${correct}.`}; },
+];
+G.math.subtraction_word_problems = [
   () => { const start=randInt(20,40); const spent=randInt(5,15); const correct=start-spent;
     const {options,correctIndex}=makeMCQ(correct,[correct+5,correct-5,start]);
     return {q:`You have £${start}. You spend £${spent} on a model kit. How much is left?`, options, correctIndex,
@@ -640,19 +805,9 @@ G.math.reasoning = [
     const {options,correctIndex}=makeMCQ(correct,[correct+5,correct-5,start]);
     return {q:`You have £${start}. You spend £${spent} on a model kit. How much is left?`, options, correctIndex,
       explain:`£${start} - £${spent} = £${correct}.`}; },
-  () => { const rows=randInt(3,6), cols=randInt(3,6); const correct=rows*cols;
-    const {options,correctIndex}=makeMCQ(correct,[correct+rows,correct-cols,rows+cols]);
-    return {q:`Lego bricks are arranged in ${rows} rows of ${cols}. How many bricks in total?`, options, correctIndex,
-      explain:`${rows} × ${cols} = ${correct}.`}; },
-  () => { const rows=randInt(3,9), cols=randInt(3,9); const correct=rows*cols;
-    const {options,correctIndex}=makeMCQ(correct,[correct+rows,correct-cols,rows+cols]);
-    return {q:`Lego bricks are arranged in ${rows} rows of ${cols}. How many bricks in total?`, options, correctIndex,
-      explain:`${rows} × ${cols} = ${correct}.`}; },
+];
+G.math.multi_step_word_problems = [
   () => { const a=randInt(10,25), b=randInt(5,15), c=randInt(3,10); const correct=a+b-c;
-    const {options,correctIndex}=makeMCQ(correct,[a+b+c,correct+2,correct-2]);
-    return {q:`A car park has ${a} cars. ${b} more arrive, then ${c} leave. How many cars now?`, options, correctIndex,
-      explain:`${a} + ${b} - ${c} = ${correct}.`}; },
-  () => { const a=randInt(15,40), b=randInt(10,30), c=randInt(5,20); const correct=a+b-c;
     const {options,correctIndex}=makeMCQ(correct,[a+b+c,correct+2,correct-2]);
     return {q:`A car park has ${a} cars. ${b} more arrive, then ${c} leave. How many cars now?`, options, correctIndex,
       explain:`${a} + ${b} - ${c} = ${correct}.`}; },
@@ -662,10 +817,25 @@ G.math.reasoning = [
       options, correctIndex, explain:`(${packs} × ${perPack}) + ${extra} = ${packs*perPack} + ${extra} = ${correct}.`}; },
 ];
 
-// ---- ENGLISH: Word Classes ----
-// 9 tiers: each pair of grammar concepts gets a Year, escalating from Noun/Verb
-// through to a full mixed-class challenge at Year 4 Advanced.
-G.english.word_classes = [
+G.math.roman_numerals = [
+  () => { const arabic=pick([1,2,3,4,5,6,7,8,9,10]); const map={1:"I",2:"II",3:"III",4:"IV",5:"V",6:"VI",7:"VII",8:"VIII",9:"IX",10:"X"};
+    const correct=map[arabic];
+    const wrongs=shuffle(Object.values(map).filter(v=>v!==correct)).slice(0,3);
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`What is ${arabic} in Roman numerals?`, options, correctIndex, explain:`${arabic} in Roman numerals is ${correct}.`}; },
+  () => { const map={1:"I",2:"II",3:"III",4:"IV",5:"V",6:"VI",7:"VII",8:"VIII",9:"IX",10:"X",20:"XX",50:"L",100:"C"};
+    const arabic=pick(Object.keys(map).map(Number)); const correct=map[arabic];
+    const wrongs=shuffle(Object.values(map).filter(v=>v!==correct)).slice(0,3);
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`What is ${arabic} in Roman numerals?`, options, correctIndex, explain:`${arabic} in Roman numerals is ${correct}.`}; },
+  () => { const map={"I":1,"V":5,"X":10,"L":50,"C":100,"IV":4,"IX":9,"XX":20}; const roman=pick(Object.keys(map)); const correct=map[roman];
+    const {options,correctIndex}=makeMCQ(correct,[correct+1,correct-1,correct+10]);
+    return {q:`What number does the Roman numeral ${roman} represent?`, options, correctIndex, explain:`${roman} = ${correct}.`}; },
+];
+
+// ---- ENGLISH: content is organized by SKILL now, not by topic+tier. ----
+
+G.english.nouns_and_verbs = [
   () => { const nouns=["car","dog","cat","ball","train","house","tree","book"]; const verbs=["run","jump","play","eat","swim","climb","laugh","sing"];
     const isNoun=Math.random()<0.5; const word=isNoun?pick(nouns):pick(verbs);
     const correct=isNoun?"Noun":"Verb";
@@ -676,6 +846,8 @@ G.english.word_classes = [
     const correct=isNoun?"Noun":"Verb";
     const {options,correctIndex}=makeMCQ(correct,["Noun","Verb","Adjective"]);
     return {q:`${introSentence("Noun","Verb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
+];
+G.english.adjectives_and_adverbs = [
   () => { const adjs=["shiny","tall","happy","fast","huge","brave","curious","ancient"]; const nouns=["car","dog","castle","rocket","engine","planet","museum","volcano"];
     const isAdj=Math.random()<0.5; const word=isAdj?pick(adjs):pick(nouns);
     const correct=isAdj?"Adjective":"Noun";
@@ -686,6 +858,8 @@ G.english.word_classes = [
     const correct=isAdj?"Adjective":"Adverb";
     const {options,correctIndex}=makeMCQ(correct,["Adjective","Adverb","Noun"]);
     return {q:`${introSentence("Adjective","Adverb")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is an ${correct.toLowerCase()}${withDef(correct)}.`}; },
+];
+G.english.pronouns_and_conjunctions = [
   () => { const pronouns=["he","she","it","they","we","you","I","them"]; const nouns=["car","dog","castle","rocket","engine","planet","museum","volcano"];
     const isPro=Math.random()<0.5; const word=isPro?pick(pronouns):pick(nouns);
     const correct=isPro?"Pronoun":"Noun";
@@ -696,6 +870,8 @@ G.english.word_classes = [
     const correct=isPro?"Pronoun":"Conjunction";
     const {options,correctIndex}=makeMCQ(correct,["Pronoun","Conjunction","Preposition"]);
     return {q:`${introSentence("Pronoun","Conjunction")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
+];
+G.english.prepositions_and_nouns = [
   () => { const preps=["under","beside","through","between","above","behind","near","across"]; const verbs=["run","jump","build","explore","invent","discover","launch","climb"];
     const isPrep=Math.random()<0.5; const word=isPrep?pick(preps):pick(verbs);
     const correct=isPrep?"Preposition":"Verb";
@@ -706,16 +882,9 @@ G.english.word_classes = [
     const correct=isPrep?"Preposition":"Proper noun";
     const {options,correctIndex}=makeMCQ(correct,["Preposition","Proper noun","Common noun"]);
     return {q:`${introSentence("Preposition","Proper noun")}What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
-  () => { const pool=[["car","Noun"],["run","Verb"],["shiny","Adjective"],["quickly","Adverb"],["he","Pronoun"],["but","Conjunction"],["under","Preposition"],["London","Proper noun"],
-      ["rocket","Noun"],["explore","Verb"],["ancient","Adjective"],["bravely","Adverb"],["they","Pronoun"],["because","Conjunction"],["beside","Preposition"],["Mars","Proper noun"]];
-    const [word,correct]=pick(pool);
-    const wrongClasses = shuffle([...new Set(pool.filter(p=>p[1]!==correct).map(p=>p[1]))]).slice(0,3);
-    const {options,correctIndex}=makeMCQ(correct,wrongClasses);
-    return {q:`What word class is "${word}"?`, options, correctIndex, explain:`"${word}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
 ];
 
-// ---- ENGLISH: Sentence Structure ----
-G.english.sentence_structure = [
+G.english.sentence_fragments = [
   () => { const complete=["The dog barked.","Grayson ran fast.","The car stopped.","Emma laughed.","The bird flew away.","The cake tasted great.","Oliver won the race.","The engine started."];
     const fragment=["Running fast","Under the table","Near the door","Down the hill","Behind the wall","After the storm","Full of energy","Next to the school"];
     const isComplete=Math.random()<0.5; const text=isComplete?pick(complete):pick(fragment);
@@ -730,6 +899,8 @@ G.english.sentence_structure = [
     const {options,correctIndex}=makeMCQ(correct,["Complete sentence","Sentence fragment"]);
     return {q:`${introSentence("Complete sentence","Sentence fragment")}Is this a complete sentence or a fragment? "${text}"`, options, correctIndex,
       explain:`"${text}" is a ${correct.toLowerCase()}${withDef(correct)}.`}; },
+];
+G.english.simple_and_compound_sentences = [
   () => { const simple=["The car stopped.","She likes science.","The dog slept.","Grayson smiled.","The bird sang.","Oliver ran.","The rain fell.","Emma waited."]; const compound=["The car stopped, and the driver got out.","She likes science, but she loves art more.","The dog slept, and the cat watched.","Grayson smiled, but he stayed quiet.","The bird sang, and everyone listened.","Oliver ran, but he was too slow.","The rain fell, and the streets got wet.","Emma waited, but the bus never came."];
     const isSimple=Math.random()<0.5; const text=isSimple?pick(simple):pick(compound);
     const correct=isSimple?"Simple sentence":"Compound sentence";
@@ -743,30 +914,29 @@ G.english.sentence_structure = [
     const {options,correctIndex}=makeMCQ(correct,["Simple sentence","Compound sentence"]);
     return {q:`${introSentence("Simple sentence","Compound sentence")}Is this a simple or compound sentence? "${text}"`, options, correctIndex,
       explain:`It's a ${correct.toLowerCase()}${withDef(correct)} — ${isSimple?"one idea":"two ideas joined by a conjunction"}.`}; },
+];
+G.english.joining_sentences = [
+  () => { const pairs=[["The rocket launched.","Everyone cheered."],["The dog barked.","The cat ran away."],["Grayson finished the model.","He showed his dad."],["The rain stopped.","We went outside to play."],["The bell rang.","Class began."],["The sun rose.","The birds started singing."],["The team scored.","The fans went wild."],["The storm passed.","The sky turned blue."],["The music started.","Everyone began to dance."],["The train arrived.","The passengers got on."],["The lights went out.","Everyone gasped."],["The whistle blew.","The race began."]];
+    const [a,b]=pick(pairs);
+    const correct=`${a.slice(0,-1)}, and ${b.toLowerCase()}`;
+    const wrongs=[`${a} ${b}`,`${a.slice(0,-1)} but ${b.toLowerCase()}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`${introSentence("Compound sentence")}Which correctly joins these into one compound sentence? "${a}" + "${b}"`, options, correctIndex,
+      explain:`Join with a comma and "and": "${correct}"`}; },
+  () => { const pairs=[["The rocket launched.","Everyone cheered."],["The dog barked.","The cat ran away."],["Grayson finished the model.","He showed his dad."],["The rain stopped.","We went outside to play."],["The bell rang.","Class began."],["The sun rose.","The birds started singing."],["The team scored.","The fans went wild."],["The storm passed.","The sky turned blue."],["The music started.","Everyone began to dance."],["The train arrived.","The passengers got on."],["The lights went out.","Everyone gasped."],["The whistle blew.","The race began."]];
+    const [a,b]=pick(pairs);
+    const correct=`${a.slice(0,-1)}, and ${b.toLowerCase()}`;
+    const wrongs=[`${a} ${b}`,`${a.slice(0,-1)} but ${b.toLowerCase()}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`${introSentence("Compound sentence")}Which correctly joins these into one compound sentence? "${a}" + "${b}"`, options, correctIndex,
+      explain:`Join with a comma and "and": "${correct}"`}; },
+];
+G.english.subordinate_clauses = [
   () => { const sentences=["When the bell rang, everyone stopped.","Because he was curious, Grayson opened the box.","While the rocket launched, the crowd cheered.","Although it was raining, we went outside.","Since the storm passed, we played outside.","Before the sun set, we packed up camp.","If it snows tomorrow, school will close.","After the alarm sounded, everyone left.","Unless we hurry, we'll miss the train.","Whenever it thunders, the dog hides.","As the sun rose, the birds began to sing.","Once the game finished, we went home."];
     const text=pick(sentences); const correct="Subordinate clause";
     const {options,correctIndex}=makeMCQ(correct,["Subordinate clause","Main clause"]);
     return {q:`${introSentence("Subordinate clause")}In "${text}", what type of clause comes first?`, options, correctIndex,
       explain:`It starts with a subordinate clause${withDef(correct)}.`}; },
-  () => { const sentences=["Although it was raining, we went outside.","When the bell rang, everyone stopped.","Because he was curious, Grayson opened the box.","While the rocket launched, the crowd cheered.","Since the storm passed, we played outside.","Before the sun set, we packed up camp.","If it snows tomorrow, school will close.","After the alarm sounded, everyone left.","Unless we hurry, we'll miss the train.","Whenever it thunders, the dog hides.","As the sun rose, the birds began to sing.","Once the game finished, we went home."];
-    const text=pick(sentences); const correct="Subordinate clause";
-    const {options,correctIndex}=makeMCQ(correct,["Subordinate clause","Main clause","Compound sentence"]);
-    return {q:`${introSentence("Subordinate clause")}In "${text}", what type of clause comes first?`, options, correctIndex,
-      explain:`It starts with a subordinate clause${withDef(correct)}.`}; },
-  () => { const pairs=[["The rocket launched.","Everyone cheered."],["The dog barked.","The cat ran away."],["Grayson finished the model.","He showed his dad."],["The rain stopped.","We went outside to play."],["The bell rang.","Class began."],["The sun rose.","The birds started singing."],["The team scored.","The fans went wild."],["The storm passed.","The sky turned blue."],["The music started.","Everyone began to dance."],["The train arrived.","The passengers got on."],["The lights went out.","Everyone gasped."],["The whistle blew.","The race began."]];
-    const [a,b]=pick(pairs);
-    const correct=`${a.slice(0,-1)}, and ${b.toLowerCase()}`;
-    const wrongs=[`${a} ${b}`,`${a.slice(0,-1)} but ${b.toLowerCase()}`];
-    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q:`${introSentence("Compound sentence")}Which correctly joins these into one compound sentence? "${a}" + "${b}"`, options, correctIndex,
-      explain:`Join with a comma and "and": "${correct}"`}; },
-  () => { const pairs=[["The rocket launched.","Everyone cheered."],["The dog barked.","The cat ran away."],["Grayson finished the model.","He showed his dad."],["The rain stopped.","We went outside to play."],["The bell rang.","Class began."],["The sun rose.","The birds started singing."],["The team scored.","The fans went wild."],["The storm passed.","The sky turned blue."],["The music started.","Everyone began to dance."],["The train arrived.","The passengers got on."],["The lights went out.","Everyone gasped."],["The whistle blew.","The race began."]];
-    const [a,b]=pick(pairs);
-    const correct=`${a.slice(0,-1)}, and ${b.toLowerCase()}`;
-    const wrongs=[`${a} ${b}`,`${a.slice(0,-1)} but ${b.toLowerCase()}`];
-    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q:`${introSentence("Compound sentence")}Which correctly joins these into one compound sentence? "${a}" + "${b}"`, options, correctIndex,
-      explain:`Join with a comma and "and": "${correct}"`}; },
   () => { const pairs=[["Because it was raining","we stayed inside."],["Although he was tired","Grayson kept building."],["When the alarm rang","everyone rushed outside."],["Since the shop was closed","we went home."],["While the rain fell","we watched a film."],["If the bus is late","we will walk instead."],["Before the game started","the team warmed up."],["After the bell rang","the students lined up."],["Unless we leave now","we'll be late."],["Whenever it snows","the park closes early."],["As the tide came in","the children ran up the beach."],["Once the cake cooled","we added the icing."]];
     const [sub,main]=pick(pairs); const correct=sub;
     const wrongs=[main.replace(/\.$/,""), `${sub} ${main}`];
@@ -774,9 +944,24 @@ G.english.sentence_structure = [
     return {q:`In "${sub}, ${main}", which part is the subordinate clause?`, options, correctIndex,
       explain:`"${sub}" is the subordinate clause${withDef("Subordinate clause")} — it can't stand alone as a full sentence.`}; },
 ];
+// Fronted adverbials: a phrase that sets the scene (when/where/how) BEFORE
+// the main clause, followed by a comma — the specific skill JC named,
+// distinct from subordinate clauses (which need a subject+verb of their own).
+G.english.fronted_adverbials = [
+  () => { const sets=[["Slowly","Grayson opened the box."],["Suddenly","the rocket launched."],["Later that day","we went to the park."],["Without warning","the storm arrived."],["Every morning","Grayson feeds the dog."],["In the distance","thunder rumbled."],["After a while","the rain stopped."],["Carefully","she carried the vase."],["Before long","the sun set."],["Deep in the forest","the wolves howled."]];
+    const [adverbial,main]=pick(sets); const correct=`${adverbial}, ${main}`;
+    const wrongs=[`${adverbial} ${main}`,`${adverbial}. ${main}`];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which correctly punctuates this fronted adverbial? "${adverbial}" + "${main}"`, options, correctIndex,
+      explain:`A fronted adverbial sits before the main clause and is followed by a comma: "${correct}"`}; },
+  () => { const options4=[["Slowly, Grayson opened the box.","Fronted adverbial"],["Grayson opened the box slowly.","Not fronted"],["The dog barked loudly.","Not fronted"]];
+    const [text,label]=pick(options4); const correct=label;
+    const {options,correctIndex}=makeMCQ(correct,["Fronted adverbial","Not fronted"]);
+    return {q:`Does this sentence start with a fronted adverbial? "${text}"`, options, correctIndex,
+      explain:`${correct==="Fronted adverbial"?"Yes — it opens with a describing phrase followed by a comma.":"No — the describing word comes elsewhere in the sentence, not at the very start followed by a comma."}`}; },
+];
 
-// ---- ENGLISH: Punctuation ----
-G.english.punctuation = [
+G.english.capitals_and_full_stops = [
   () => { const pairs=[["the dog ran","The dog ran."],["grayson jumped","Grayson jumped."],["the cat slept","The cat slept."],["emma smiled","Emma smiled."],["the bird sang","The bird sang."],["oliver waved","Oliver waved."],["the car stopped","The car stopped."],["mia laughed","Mia laughed."],["noah shouted","Noah shouted."],["the baby cried","The baby cried."],["ava skipped","Ava skipped."],["the horse galloped","The horse galloped."]];
     const [text,correct]=pick(pairs);
     const wrongs=[text+".", correct.slice(0,-1)];
@@ -789,6 +974,16 @@ G.english.punctuation = [
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which is correctly punctuated? (original: "${text}")`, options, correctIndex,
       explain:`Sentences start with a capital letter and end with a full stop: "${correct}"`}; },
+];
+G.english.question_marks = [
+  () => { const pairs=[["Why did the rocket launch","Why did the rocket launch?"],["What is your name","What is your name?"],["Where do you live","Where do you live?"],["How old are you","How old are you?"],["When does the film start","When does the film start?"],["Who won the race","Who won the race?"],["Why is the sky blue","Why is the sky blue?"],["What time is it","What time is it?"],["How does this work","How does this work?"],["Which team won","Which team won?"],["Where did you find that","Where did you find that?"],["Why is the dog barking","Why is the dog barking?"]];
+    const [text,correct]=pick(pairs);
+    const wrongs=[text+".", text+"!"];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Which is correctly punctuated? (original: "${text}")`, options, correctIndex,
+      explain:`Questions end with a question mark: "${correct}"`}; },
+];
+G.english.commas_in_lists = [
   () => { const lists=[["apples","pears","bananas"],["cars","trucks","trains"],["red","blue","green"],["rockets","planets","stars"],["pens","pencils","rulers"],["cats","dogs","rabbits"],["shirts","socks","shoes"],["drums","guitars","pianos"],["kites","balloons","frisbees"],["carrots","peas","potatoes"],["hats","scarves","gloves"],["books","magazines","comics"]];
     const items=pick(lists);
     const correct=`I bought ${items[0]}, ${items[1]} and ${items[2]}.`;
@@ -803,19 +998,19 @@ G.english.punctuation = [
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which sentence uses commas correctly to list "${items[0]}, ${items[1]}, ${items[2]}"?`, options, correctIndex,
       explain:`Commas separate list items: "${correct}"`}; },
+];
+G.english.apostrophes = [
   () => { const names=["Grayson","Emma","Oliver","Mia","Noah","Ava","Leo","Zara","Isla","Finn","Ruby","Max"]; const name=pick(names);
     const correct=`${name}'s car`; const wrongs=[`${name}s' car`,`${name}s car`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which correctly shows the car belongs to ${name}?`, options, correctIndex, explain:`Correct form: "${correct}".`}; },
-  () => { const names=["Grayson","Emma","the dog","Oliver","Mia","the cat","Noah","the teacher"]; const name=pick(names);
-    const contractions=[["do not","don't"],["is not","isn't"],["cannot","can't"],["did not","didn't"],["will not","won't"],["have not","haven't"]];
-    const isPossessive=Math.random()<0.5;
-    const [phrase,contracted]=pick(contractions);
-    const correct = isPossessive ? `${name}'s car` : contracted;
-    const wrongs = isPossessive ? [`${name}s' car`,`${name}s car`] : [phrase.replace(" ",""), contracted.replace("'","")];
+  () => { const contractions=[["do not","don't"],["is not","isn't"],["cannot","can't"],["did not","didn't"],["will not","won't"],["have not","haven't"]];
+    const [phrase,contracted]=pick(contractions); const correct=contracted;
+    const wrongs=[phrase.replace(" ",""), contracted.replace("'","")];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q: isPossessive ? `Which correctly shows the car belongs to ${name}?` : `Which correctly contracts "${phrase}"?`,
-      options, correctIndex, explain:`Correct form: "${correct}".`}; },
+    return {q:`Which correctly contracts "${phrase}"?`, options, correctIndex, explain:`Correct form: "${correct}".`}; },
+];
+G.english.speech_marks = [
   () => { const lines=[["I found it!","Grayson"],["Look at that!","Emma"],["We won!","the team"],["It's alive!","the scientist"],["Watch out!","Oliver"],["That's amazing!","Mia"],["Let's go!","the coach"],["I did it!","Noah"],["Look out below!","the builder"],["We made it!","Ava"],["Incredible!","the pilot"],["Over here!","Leo"]];
     const [line,speaker]=pick(lines);
     const correct=`"${line}" said ${speaker}.`;
@@ -830,16 +1025,9 @@ G.english.punctuation = [
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which correctly punctuates ${speaker} saying "${line}"?`, options, correctIndex,
       explain:`Speech marks wrap exactly what's said, punctuation goes inside: ${correct}`}; },
-  () => { const pairs=[["Why did the rocket launch","Why did the rocket launch?"],["What is your name","What is your name?"],["Where do you live","Where do you live?"],["How old are you","How old are you?"],["When does the film start","When does the film start?"],["Who won the race","Who won the race?"],["Why is the sky blue","Why is the sky blue?"],["What time is it","What time is it?"],["How does this work","How does this work?"],["Which team won","Which team won?"],["Where did you find that","Where did you find that?"],["Why is the dog barking","Why is the dog barking?"]];
-    const [text,correct]=pick(pairs);
-    const wrongs=[text+".", text+"!"];
-    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q:`Which is correctly punctuated? (original: "${text}")`, options, correctIndex,
-      explain:`Questions end with a question mark: "${correct}"`}; },
 ];
 
-// ---- ENGLISH: Verb Tenses ----
-G.english.tenses = [
+G.english.past_tense = [
   () => { const pairs=[["walk","walked"],["jump","jumped"],["play","played"],["look","looked"],["help","helped"],["climb","climbed"],["clean","cleaned"],["cook","cooked"],["dance","danced"],["pack","packed"],["paint","painted"],["wash","washed"],["laugh","laughed"],["talk","talked"]];
     const [present,past]=pick(pairs); const correct=past;
     const {options,correctIndex}=makeMCQ(correct,[present, edForm(present)]);
@@ -850,6 +1038,8 @@ G.english.tenses = [
     const {options,correctIndex}=makeMCQ(correct,[present, edForm(present), past+"ed"]);
     return {q:`${introSentence("Past tense")}What is the past tense of "${present}"?`, options, correctIndex,
       explain:`"${present}" → "${correct}" (past tense = something that already happened).`}; },
+];
+G.english.progressive_tense = [
   () => { const verbs=["build","paint","jump","race","walk","cook","clean","help","pack","dance","climb","wave","smile","skip"]; const v=pick(verbs); const correct=ingForm(v);
     const {options,correctIndex}=makeMCQ(correct,[v, edForm(v)]);
     return {q:`${introSentence("Progressive tense")}Which shows the action happening right now for "${v}"? "Grayson is ___ a tower."`,
@@ -858,6 +1048,8 @@ G.english.tenses = [
     const {options,correctIndex}=makeMCQ(correct,[v, edForm(v), v+"s"]);
     return {q:`${introSentence("Progressive tense")}Which shows the action happening right now for "${v}"? "Grayson is ___ a tower."`,
       options, correctIndex, explain:`Progressive tense uses "is/are + verb-ing": "${correct}"${withDef("Progressive tense")}.`}; },
+];
+G.english.future_tense = [
   () => { const verbs=["build","paint","explore","launch","climb","create","design","race","clean","pack","invent","discover","celebrate","imagine"]; const v=pick(verbs); const correct=`will ${v}`;
     const {options,correctIndex}=makeMCQ(correct,[edForm(v),v]);
     return {q:`${introSentence("Future tense")}Which shows the future tense for "${v}"? "Tomorrow, Grayson ___ a rocket."`, options, correctIndex,
@@ -866,6 +1058,8 @@ G.english.tenses = [
     const {options,correctIndex}=makeMCQ(correct,[edForm(v),`is ${ingForm(v)}`,v]);
     return {q:`${introSentence("Future tense")}Which shows the future tense for "${v}"? "Tomorrow, Grayson ___ a rocket."`, options, correctIndex,
       explain:`Future tense: "will + verb": "${correct}"${withDef("Future tense")}.`}; },
+];
+G.english.present_perfect_tense = [
   () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"],["go","gone"],["write","written"],["give","given"],["explore","explored"],["climb","climbed"],["clean","cleaned"],["take","taken"],["eat","eaten"],["do","done"],["speak","spoken"],["break","broken"]]; const [present,past]=pick(pairs);
     const correct=`has ${past}`;
     const {options,correctIndex}=makeMCQ(correct,[`have ${present}`,past]);
@@ -876,15 +1070,35 @@ G.english.tenses = [
     const {options,correctIndex}=makeMCQ(correct,[`have ${present}`,`is ${ingForm(present)}`,past]);
     return {q:`${introSentence("Present perfect tense")}Which shows the present perfect tense for "${present}"? "Grayson ___ the whole model."`, options, correctIndex,
       explain:`Present perfect: "has/have + past participle": "${correct}"${withDef("Present perfect tense")}.`}; },
+];
+G.english.past_perfect_tense = [
   () => { const pairs=[["walk","walked"],["build","built"],["see","seen"],["paint","painted"],["go","gone"],["write","written"],["give","given"],["take","taken"],["eat","eaten"],["do","done"],["explore","explored"],["climb","climbed"],["speak","spoken"],["break","broken"],["sing","sung"]]; const [present,past]=pick(pairs);
     const correct=`had ${past}`;
     const {options,correctIndex}=makeMCQ(correct,[`has ${past}`,`is ${ingForm(present)}`,past]);
     return {q:`${introSentence("Past perfect tense")}Which shows the past perfect tense for "${present}"? "By the time we arrived, Grayson ___ the whole model."`, options, correctIndex,
       explain:`Past perfect: "had + past participle" (used for something that happened before another past event): "${correct}"${withDef("Past perfect tense")}.`}; },
+  () => { const pairs=[["run","ran"],["give","gave"],["eat","ate"],["write","wrote"],["speak","spoke"],["build","built"],["see","saw"]]; const [present,past]=pick(pairs);
+    const correct=`had ${past==="ran"?"run":past==="gave"?"given":past==="ate"?"eaten":past==="wrote"?"written":past==="spoke"?"spoken":past==="saw"?"seen":past}`;
+    const {options,correctIndex}=makeMCQ(correct,[`has ${past}`,past]);
+    return {q:`${introSentence("Past perfect tense")}Which shows the past perfect tense for "${present}"? "By the time the bell rang, Grayson ___."`, options, correctIndex,
+      explain:`Past perfect: "had + past participle": "${correct}"${withDef("Past perfect tense")}.`}; },
 ];
 
-// ---- ENGLISH: Vocabulary & Spelling ----
-G.english.vocabulary = [
+G.english.spelling_patterns = [
+  () => { const pairs=[["box","boxes"],["dish","dishes"],["bus","buses"],["watch","watches"],["glass","glasses"],["fox","foxes"],["brush","brushes"],["church","churches"]];
+    const [word,correct]=pick(pairs); const wrongs=[word+"s", word.slice(0,-1)+"ies"];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`What is the plural of "${word}"?`, options, correctIndex, explain:`Words ending in x, sh, ch, ss, or s add "es": "${correct}".`}; },
+  () => { const pairs=[["baby","babies"],["city","cities"],["puppy","puppies"],["story","stories"],["party","parties"],["family","families"],["lady","ladies"],["country","countries"]];
+    const [word,correct]=pick(pairs); const wrongs=[word+"s", word+"es"];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`What is the plural of "${word}"?`, options, correctIndex, explain:`Words ending in a consonant + y change the y to "ies": "${correct}".`}; },
+  () => { const pairs=[["run","running"],["stop","stopping"],["swim","swimming"],["hop","hopping"],["plan","planning"],["shop","shopping"],["chat","chatting"],["grab","grabbing"]];
+    const [word,correct]=pick(pairs); const wrongs=[word+"ing", word+word.slice(-1)+word.slice(-1)+"ing"];
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`Add "-ing" to "${word}".`, options, correctIndex, explain:`Short vowel + one consonant at the end: double the last letter before adding "-ing": "${correct}".`}; },
+];
+G.english.synonyms = [
   () => { const pairs=[["happy","joyful"],["big","enormous"],["cold","icy"],["little","tiny"],["fast","quick"],["loud","noisy"],["scared","frightened"],["pretty","lovely"],["clean","spotless"],["dirty","filthy"],["quiet","silent"],["strong","powerful"]];
     const [word,syn]=pick(pairs); const correct=syn;
     const {options,correctIndex}=makeMCQ(correct,["sad","small","hot","slow"]);
@@ -893,6 +1107,8 @@ G.english.vocabulary = [
     const [word,syn]=pick(pairs); const correct=syn;
     const {options,correctIndex}=makeMCQ(correct,["sad","small","slow","calm"]);
     return {q:`Which word means the same as "${word}"?`, options, correctIndex, explain:`"${syn}" is a synonym for "${word}".`}; },
+];
+G.english.antonyms = [
   () => { const pairs=[["hot","cold"],["fast","slow"],["up","down"],["day","night"],["big","small"],["loud","quiet"],["happy","sad"],["light","dark"],["wet","dry"],["full","empty"],["open","closed"],["early","late"]];
     const [word,ant]=pick(pairs); const correct=ant;
     const {options,correctIndex}=makeMCQ(correct,["huge","quick","warm","bright"]);
@@ -901,6 +1117,8 @@ G.english.vocabulary = [
     const [word,ant]=pick(pairs); const correct=ant;
     const {options,correctIndex}=makeMCQ(correct,["huge","quick","joyful","calm"]);
     return {q:`Which word means the opposite of "${word}"?`, options, correctIndex, explain:`"${ant}" is an antonym for "${word}".`}; },
+];
+G.english.prefixes = [
   () => { const roots=[["un","happy","not happy"],["un","kind","not kind"],["un","fair","not fair"],["un","well","not well"],["un","tidy","not tidy"],["un","safe","not safe"],["un","lucky","not lucky"],["un","common","not common"],["un","able","not able"],["un","true","not true"],["un","sure","not sure"],["un","equal","not equal"]];
     const [prefix,root,meaning]=pick(roots); const correct=`${prefix}${root}`;
     const {options,correctIndex}=makeMCQ(correct,[root, `${root}ing`]);
@@ -913,6 +1131,21 @@ G.english.vocabulary = [
     const {options,correctIndex}=makeMCQ(correct,[...wrongPrefixes, root]);
     return {q:`Add a prefix to "${root}" to mean "${meaning}".`, options, correctIndex,
       explain:`"${prefix}" + "${root}" = "${correct}" (${meaning}).`}; },
+];
+G.english.suffixes = [
+  () => { const roots=[["care","ful","full of care"],["care","less","without care"],["help","ful","full of help"],["help","less","without help"],["hope","ful","full of hope"],["hope","less","without hope"],["thought","ful","full of thought"],["thought","less","without thought"],["harm","ful","full of harm"],["harm","less","without harm"],["colour","ful","full of colour"],["use","less","without use"]];
+    const [root,suffix,meaning]=pick(roots); const correct=`${root}${suffix}`;
+    const wrongSuffix = suffix==="ful"?"less":"ful";
+    const {options,correctIndex}=makeMCQ(correct,[`${root}${wrongSuffix}`, root]);
+    return {q:`Add a suffix to "${root}" to mean "${meaning}".`, options, correctIndex,
+      explain:`"${root}" + "${suffix}" = "${correct}" (${meaning}).`}; },
+  () => { const roots=[["quiet","ly","in a quiet way"],["quick","ly","in a quick way"],["brave","ly","in a brave way"],["soft","ly","in a soft way"],["sudden","ly","in a sudden way"],["careful","ly","in a careful way"],["slow","ly","in a slow way"],["loud","ly","in a loud way"]];
+    const [root,suffix,meaning]=pick(roots); const correct=`${root}${suffix}`;
+    const {options,correctIndex}=makeMCQ(correct,[root, `${root}ing`]);
+    return {q:`Add a suffix to "${root}" to mean "${meaning}".`, options, correctIndex,
+      explain:`"${root}" + "${suffix}" = "${correct}" (${meaning}).`}; },
+];
+G.english.homophones = [
   () => { const pairs=[["to","too"],["hear","here"],["one","won"],["sun","son"],["be","bee"],["eye","I"],["flower","flour"],["sea","see"]];
     const [a,b]=pick(pairs); const useA=Math.random()<0.5; const word=useA?a:b;
     const {options,correctIndex}=makeMCQ(`${a} / ${b}`,[`${a} / ${a}`]);
@@ -923,16 +1156,9 @@ G.english.vocabulary = [
     const {options,correctIndex}=makeMCQ(`${a} / ${b}`,[`${a} / ${a}`,`${b} / ${b}`]);
     return {q:`"${word}" has a homophone (sounds the same, different spelling & meaning). Which pair is correct?`,
       options, correctIndex, explain:`"${a}" and "${b}" are homophones.`}; },
-  () => { const roots=[["care","ful","full of care"],["care","less","without care"],["help","ful","full of help"],["help","less","without help"],["hope","ful","full of hope"],["hope","less","without hope"],["thought","ful","full of thought"],["thought","less","without thought"],["harm","ful","full of harm"],["harm","less","without harm"],["colour","ful","full of colour"],["use","less","without use"]];
-    const [root,suffix,meaning]=pick(roots); const correct=`${root}${suffix}`;
-    const wrongSuffix = suffix==="ful"?"less":"ful";
-    const {options,correctIndex}=makeMCQ(correct,[`${root}${wrongSuffix}`, root]);
-    return {q:`Add a suffix to "${root}" to mean "${meaning}".`, options, correctIndex,
-      explain:`"${root}" + "${suffix}" = "${correct}" (${meaning}).`}; },
 ];
 
-// ---- ENGLISH: Composition & Style ----
-G.english.composition = [
+G.english.powerful_vocabulary = [
   () => { const better={big:"enormous",good:"magnificent",said:"exclaimed",nice:"delightful",sad:"miserable",cold:"freezing",tired:"exhausted",scared:"terrified",fast:"lightning-quick",small:"tiny",loud:"deafening",dirty:"filthy"};
     const plain=Object.keys(better); const word=pick(plain); const correct=better[word];
     const {options,correctIndex}=makeMCQ(correct,["ok","fine"]);
@@ -943,17 +1169,34 @@ G.english.composition = [
     const {options,correctIndex}=makeMCQ(correct,["ok","fine","stuff"]);
     return {q:`Which is the more powerful, descriptive word to replace "${word}"?`, options, correctIndex,
       explain:`"${correct}" is more vivid and precise than "${word}".`}; },
+];
+G.english.sentence_openers = [
   () => { const pairs=[["Suddenly, the engine roared to life.","The car started."],["Deep in the workshop, gears began to turn.","There was a car in the workshop."],["With a deafening blast, the rocket tore into the sky.","The rocket went up."],["Under a sky full of stars, the scientists waited.","It was nighttime and the scientists waited."],["Without warning, the ground began to shake.","There was an earthquake."],["High above the clouds, the plane soared onward.","The plane flew."],["In the blink of an eye, the trick was done.","The magician did a trick."],["Deep beneath the waves, the submarine glided silently.","The submarine moved underwater."],["Out of nowhere, a bolt of lightning split the sky.","There was a storm."],["Across the silent field, a fox crept forward.","A fox walked in the field."],["With a final creak, the old door swung open.","The door opened."],["In a flash of colour, the fireworks lit the night.","The fireworks went off."]];
     const [correct,weak]=pick(pairs);
     const {options,correctIndex}=makeMCQ(correct,[weak]);
     return {q:`Which is the more engaging sentence opener — instead of "${weak}"?`, options, correctIndex,
       explain:`"${correct}" hooks the reader with vivid detail or action.`}; },
-  () => { const pairs=[["Suddenly, the engine roared to life.","The car started."],["Deep in the workshop, gears began to turn.","There was a car in the workshop."],["With a deafening blast, the rocket tore into the sky.","The rocket went up."],["Under a sky full of stars, the scientists waited.","It was nighttime and the scientists waited."],["Without warning, the ground began to shake.","There was an earthquake."],["High above the clouds, the plane soared onward.","The plane flew."],["In the blink of an eye, the trick was done.","The magician did a trick."],["Deep beneath the waves, the submarine glided silently.","The submarine moved underwater."],["Out of nowhere, a bolt of lightning split the sky.","There was a storm."],["Across the silent field, a fox crept forward.","A fox walked in the field."],["With a final creak, the old door swung open.","The door opened."],["In a flash of colour, the fireworks lit the night.","The fireworks went off."]];
+  () => { const pairs=[["Suddenly, the engine roared to life.","The car started."],["Deep in the workshop, gears began to turn.","There was a car in the workshop."],["With a deafening blast, the rocket tore into the sky.","The rocket went up."],["Under a sky full of stars, the scientists waited.","It was nighttime and the scientists waited."],["Without warning, the ground began to shake.","There was an earthquake."],["High above the clouds, the plane soared onward.","The plane flew."]];
     const [correct,weak]=pick(pairs);
     const otherWeak=pick(pairs.map(p=>p[1]).filter(w=>w!==weak));
     const {options,correctIndex}=makeMCQ(correct,[weak,otherWeak]);
     return {q:`Which is the more engaging sentence opener — instead of "${weak}"?`, options, correctIndex,
       explain:`"${correct}" hooks the reader with vivid detail or action.`}; },
+];
+G.english.expanded_noun_phrases = [
+  () => { const pairs=[["car","the rusty, roaring vintage car"],["dog","the small, fluffy brown dog"],["rocket","the shiny, silver rocket"],["castle","the tall, ancient stone castle"],["forest","the dark, whispering pine forest"],["river","the wide, glistening blue river"],["kitten","the tiny, curious ginger kitten"],["mountain","the towering, snow-capped mountain"],["house","the crooked, abandoned old house"],["garden","the colourful, blooming spring garden"],["beach","the golden, sun-drenched sandy beach"],["bridge","the long, creaking wooden bridge"]];
+    const [plainNoun,expanded]=pick(pairs);
+    const {options,correctIndex}=makeMCQ(expanded,[`the ${plainNoun}`]);
+    return {q:`Which is the best expanded noun phrase for "${plainNoun}"?`, options, correctIndex,
+      explain:`"${expanded}" adds vivid, specific detail.`}; },
+  () => { const pairs=[["car","the rusty, roaring vintage car"],["dog","the small, fluffy brown dog"],["rocket","the shiny, silver rocket"],["castle","the tall, ancient stone castle"],["forest","the dark, whispering pine forest"],["river","the wide, glistening blue river"],["kitten","the tiny, curious ginger kitten"],["mountain","the towering, snow-capped mountain"]];
+    const [plainNoun,expanded]=pick(pairs);
+    const otherExpanded=pick(pairs.map(p=>p[1]).filter(e=>e!==expanded));
+    const {options,correctIndex}=makeMCQ(expanded,[`the ${plainNoun}`,`a ${plainNoun} that is a ${plainNoun}`,otherExpanded]);
+    return {q:`Which is the best expanded noun phrase for "${plainNoun}"?`, options, correctIndex,
+      explain:`"${expanded}" adds vivid, specific detail.`}; },
+];
+G.english.cause_and_effect_sentences = [
   () => { const pairs=[["The rain poured down.","We stayed inside and read books."],["Grayson studied hard.","He passed the test."],["The engine overheated.","The car stopped."],["The alarm went off.","Everyone left the building."],["The wind picked up.","The kites flew higher."],["The battery died.","The torch went dark."],["The bread went stale.","We threw it away."],["The ice melted.","The path became slippery."],["The fog rolled in.","The flight was delayed."],["The crowd cheered loudly.","The players felt proud."],["The volcano erupted.","The village was evacuated."],["The power went out.","We lit some candles."]];
     const [a,b]=pick(pairs);
     const correct=`Because ${a.slice(0,-1).toLowerCase()}, ${b.toLowerCase()}`;
@@ -961,24 +1204,15 @@ G.english.composition = [
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which best combines these two ideas showing cause and effect? "${a}" + "${b}"`, options, correctIndex,
       explain:`"${correct}" clearly links cause and effect with "Because".`}; },
-  () => { const pairs=[["The rain poured down.","We stayed inside and read books."],["Grayson studied hard.","He passed the test."],["The engine overheated.","The car stopped."],["The alarm went off.","Everyone left the building."],["The wind picked up.","The kites flew higher."],["The battery died.","The torch went dark."],["The bread went stale.","We threw it away."],["The ice melted.","The path became slippery."],["The fog rolled in.","The flight was delayed."],["The crowd cheered loudly.","The players felt proud."],["The volcano erupted.","The village was evacuated."],["The power went out.","We lit some candles."]];
+  () => { const pairs=[["The rain poured down.","We stayed inside and read books."],["Grayson studied hard.","He passed the test."],["The engine overheated.","The car stopped."],["The alarm went off.","Everyone left the building."],["The wind picked up.","The kites flew higher."],["The battery died.","The torch went dark."]];
     const [a,b]=pick(pairs);
     const correct=`Because ${a.slice(0,-1).toLowerCase()}, ${b.toLowerCase()}`;
     const wrongs=[`${a} ${b}`,`${b} ${a}`];
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`Which best combines these two ideas showing cause and effect? "${a}" + "${b}"`, options, correctIndex,
       explain:`"${correct}" clearly links cause and effect with "Because".`}; },
-  () => { const pairs=[["car","the rusty, roaring vintage car"],["dog","the small, fluffy brown dog"],["rocket","the shiny, silver rocket"],["castle","the tall, ancient stone castle"],["forest","the dark, whispering pine forest"],["river","the wide, glistening blue river"],["kitten","the tiny, curious ginger kitten"],["mountain","the towering, snow-capped mountain"],["house","the crooked, abandoned old house"],["garden","the colourful, blooming spring garden"],["beach","the golden, sun-drenched sandy beach"],["bridge","the long, creaking wooden bridge"]];
-    const [plainNoun,expanded]=pick(pairs);
-    const {options,correctIndex}=makeMCQ(expanded,[`the ${plainNoun}`]);
-    return {q:`Which is the best expanded noun phrase for "${plainNoun}"?`, options, correctIndex,
-      explain:`"${expanded}" adds vivid, specific detail.`}; },
-  () => { const pairs=[["car","the rusty, roaring vintage car"],["dog","the small, fluffy brown dog"],["rocket","the shiny, silver rocket"],["castle","the tall, ancient stone castle"],["forest","the dark, whispering pine forest"],["river","the wide, glistening blue river"],["kitten","the tiny, curious ginger kitten"],["mountain","the towering, snow-capped mountain"],["house","the crooked, abandoned old house"],["garden","the colourful, blooming spring garden"],["beach","the golden, sun-drenched sandy beach"],["bridge","the long, creaking wooden bridge"]];
-    const [plainNoun,expanded]=pick(pairs);
-    const otherExpanded=pick(pairs.map(p=>p[1]).filter(e=>e!==expanded));
-    const {options,correctIndex}=makeMCQ(expanded,[`the ${plainNoun}`,`a ${plainNoun} that is a ${plainNoun}`,otherExpanded]);
-    return {q:`Which is the best expanded noun phrase for "${plainNoun}"?`, options, correctIndex,
-      explain:`"${expanded}" adds vivid, specific detail.`}; },
+];
+G.english.combining_sentences = [
   () => { const sets=[
       ["The car was fast.","The car was red.","It won the race.", "The fast, red car won the race."],
       ["The dog was small.","The dog was fluffy.","It slept all day.", "The small, fluffy dog slept all day."],
@@ -988,10 +1222,6 @@ G.english.composition = [
       ["The river was wide.","The river was blue.","It flowed past the village.","The wide, blue river flowed past the village."],
       ["The forest was dark.","The forest was quiet.","It stretched for miles.","The dark, quiet forest stretched for miles."],
       ["The mountain was tall.","The mountain was snowy.","It towered over the town.","The tall, snowy mountain towered over the town."],
-      ["The house was old.","The house was crooked.","It stood at the end of the lane.","The old, crooked house stood at the end of the lane."],
-      ["The garden was colourful.","The garden was blooming.","It smelled sweet in spring.","The colourful, blooming garden smelled sweet in spring."],
-      ["The beach was golden.","The beach was sunny.","It stretched for miles.","The golden, sunny beach stretched for miles."],
-      ["The bridge was long.","The bridge was wooden.","It creaked in the wind.","The long, wooden bridge creaked in the wind."],
     ];
     const [a,b,c,correct]=pick(sets);
     const wrongs=[`${a} ${b} ${c}`];
@@ -999,6 +1229,37 @@ G.english.composition = [
     return {q:`Which best combines these three sentences into one? "${a}" + "${b}" + "${c}"`, options, correctIndex,
       explain:`"${correct}" combines the descriptions smoothly instead of repeating the subject three times.`}; },
 ];
+
+// ---- ENGLISH: Reading Comprehension (new strand, JC 2026-08-01) ----
+// Fixed pool of short passages + questions, same "pool" shape as History
+// (see SKILLS.english.reading_literal/reading_inference: pool:true) rather
+// than procedural generation — comprehension needs a real passage to anchor
+// to, not infinitely-varied text.
+const READING_PASSAGES = [
+  { title:"The Lost Kite", primer:"Grayson took his new kite to the park on a windy afternoon. He ran across the grass, and the kite lifted higher and higher until it was just a red dot in the sky. Suddenly, the string snapped! Grayson watched the kite drift over the trees and disappear. He felt sad, but his dad said they could build an even better one together next weekend." },
+  { title:"The Science Fair", primer:"Emma spent three weeks building a volcano for the school science fair. She mixed baking soda and vinegar to make it erupt with fizzy orange foam. On the day of the fair, her hands shook as she waited for the judges. When her volcano erupted right on cue, the whole room clapped, and Emma grinned from ear to ear." },
+  { title:"The Rainy Match", primer:"The football match was tied 1-1 with five minutes left, and dark clouds rolled in. Rain began to pour, turning the pitch into mud. Oliver's boots kept slipping, but he pushed through the puddles, controlled the ball, and scored the winning goal just as the whistle blew. His whole team ran to hug him in the pouring rain." },
+];
+G.english.reading_literal = READING_PASSAGES.map((p) => () => {
+  const facts = {
+    "The Lost Kite": [["What colour was the kite?","Red",["Blue","Yellow","Green"]],["What happened to the kite's string?","It snapped",["It tangled","It got wet","It was cut"]],["Who offered to build a new kite?","Grayson's dad",["Grayson's mum","His teacher","His friend"]]],
+    "The Science Fair": [["What did Emma build?","A volcano",["A robot","A bridge","A rocket"]],["What two things did she mix?","Baking soda and vinegar",["Salt and water","Sand and glue","Flour and milk"]],["How long did she spend building it?","Three weeks",["One day","One week","A month"]]],
+    "The Rainy Match": [["What was the score before the winning goal?","1-1",["2-0","0-0","3-1"]],["What started falling with five minutes left?","Rain",["Snow","Hail","Nothing"]],["Who scored the winning goal?","Oliver",["The goalkeeper","Another player","No one"]]],
+  };
+  const [q,correct,wrongs]=pick(facts[p.title]);
+  const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+  return {q, options, correctIndex, explain:`Straight from the passage: ${correct}.`, primer:p.primer, qtag:p.title};
+});
+G.english.reading_inference = READING_PASSAGES.map((p) => () => {
+  const inferences = {
+    "The Lost Kite": [["How do you think Grayson felt when the string snapped?","Sad and disappointed",["Excited","Bored","Proud"],"The passage says he 'felt sad' — losing something you worked for is disappointing."],["Why do you think Grayson's dad suggested building a new kite?","To cheer Grayson up and give him something to look forward to",["Because the old kite was broken anyway","Because he needed a hobby","Because kites are expensive"],"Offering to build a better one together is a way of comforting Grayson after his loss."]],
+      "The Science Fair": [["Why do you think Emma's hands were shaking?","She was nervous about the judges watching",["She was cold","She was tired","She was excited to leave"],"Waiting to be judged in front of others often makes people nervous, shown by her shaking hands."],["What does 'right on cue' suggest about the eruption?","It happened at exactly the right moment, which was a relief",["It happened too early","It didn't work","It happened by accident"],"'Right on cue' means something happens exactly when it's supposed to — a good sign after weeks of preparation."]],
+      "The Rainy Match": [["Why do you think Oliver's boots kept slipping?","The rain had turned the pitch to mud",["His boots were the wrong size","He was tired","He wasn't trying"],"The passage says rain turned the pitch into mud, which explains the slipping."],["Why did the whole team run to hug Oliver?","They were thrilled he'd won the match for them",["They were also slipping in the mud","It was the end of the game anyway","They were told to by the coach"],"Scoring a winning goal in the last moments is exciting — hugging shows shared joy and gratitude."]],
+  };
+  const [q,correct,wrongs,explain]=pick(inferences[p.title]);
+  const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+  return {q, options, correctIndex, explain, primer:p.primer, qtag:p.title};
+});
 
 // ---- HISTORY: 6 fixed comprehension questions per topic (easy -> harder) ----
 // Each topic's adaptive-model tier controls how MANY of its 6 questions are
@@ -1131,102 +1392,138 @@ G.history.map_capital = [
 const STORAGE_KEY = "graysons_app_state_v1";
 
 function defaultTopicState(){
-  // Starts at true tier 0 ("Basics") — a topic he hasn't played yet should
-  // never look like it's already at "Advanced" before he's answered anything.
-  // tier/correctStreak/wrongStreak/needsReview/recentQuestions/seenAtTier are
-  // legacy fields from the pre-adaptive-engine tier/streak system (kept in
-  // the shape for backward-compatible migration of old saves, but no longer
-  // read by any current gameplay logic — see `concepts` below instead).
-  // concepts: the adaptive learner model, keyed by tier number, holding each
-  // tier's independent mastery/confidence/retrieval-strength/misconception
-  // state. Used by all three subjects (Math, English, History) — see
-  // section 5b below.
+  // Used by History ONLY now (Math/English moved to the flat skill-graph
+  // model below — see defaultState/migrateState). Starts at true tier 0
+  // ("Basics") — a topic he hasn't played yet should never look like it's
+  // already at "Advanced" before he's answered anything. tier/correctStreak/
+  // wrongStreak/needsReview/recentQuestions/seenAtTier are legacy fields
+  // from the pre-adaptive-engine tier/streak system (kept for backward-
+  // compatible migration of old saves, no longer read by gameplay logic).
+  // concepts: the adaptive learner model, keyed by tier number.
   return { tier:0, correctStreak:0, wrongStreak:0, attempts:0, correct:0, needsReview:false, roundsSince:0,
     recentQuestions:[], seenAtTier:[], concepts:{} };
 }
 function defaultState(){
   const s = { history:[], updatedAt:0 };
-  for(const subj of Object.keys(CURRICULUM)){
-    s[subj] = { topics:{} };
-    for(const t of CURRICULUM[subj].topics){
-      s[subj].topics[t.id] = defaultTopicState();
-    }
-  }
+  // Math/English: flat skill-graph state. Each skill's concept object is
+  // created lazily (via defaultConceptState()) the first time it's actually
+  // touched, same lazy-creation pattern the old per-tier model used — a
+  // fresh skill shouldn't need to exist in STATE at all until Grayson has
+  // actually attempted a question in it.
+  s.math = { skills:{} };
+  s.english = { skills:{} };
+  // History: unchanged topic+tier model (independent facts, no skill graph).
+  s.history = { topics:{} };
+  for(const t of CURRICULUM.history.topics) s.history.topics[t.id] = defaultTopicState();
   return s;
 }
+// Maps each new atomic skill back to the old (pre-2026-08-01) topic it was
+// split out of, so migrateState can seed a sensible mastery prior from
+// real play data instead of resetting everyone to zero when the model
+// changes. Skills with no entry here are genuinely new (Roman numerals,
+// fronted adverbials, spelling patterns, reading comprehension) and simply
+// start fresh — there's no old data to inherit for something that didn't
+// exist before.
+const SKILL_SOURCE_TOPIC = {
+  math: {
+    place_value_basics:"place_value", rounding_to_10:"place_value", rounding_to_100:"place_value", rounding_to_1000:"place_value",
+    addition_within_20:"add_sub", subtraction_within_20:"add_sub", addition_with_regrouping:"add_sub", subtraction_across_zeros:"add_sub", column_addition:"add_sub", column_subtraction:"add_sub",
+    multiplication_facts:"mult_div", division_facts:"mult_div", multiplication_2digit:"mult_div", division_with_remainders:"mult_div", multiplication_large_numbers:"mult_div",
+    understanding_fractions:"fractions", equivalent_fractions:"fractions", fraction_of_amount:"fractions", comparing_fractions:"fractions", fractions_on_number_line:"fractions", decimals:"fractions",
+    telling_time:"measurement", money:"measurement", perimeter:"measurement", area:"measurement",
+    shapes_2d:"geometry", shapes_3d:"geometry", angles:"geometry", coordinates:"geometry",
+    pictograms_and_charts:"statistics", mode_and_range:"statistics", mean_average:"statistics",
+    multiplication_word_problems:"reasoning", subtraction_word_problems:"reasoning", multi_step_word_problems:"reasoning",
+  },
+  english: {
+    nouns_and_verbs:"word_classes", adjectives_and_adverbs:"word_classes", pronouns_and_conjunctions:"word_classes", prepositions_and_nouns:"word_classes",
+    sentence_fragments:"sentence_structure", simple_and_compound_sentences:"sentence_structure", joining_sentences:"sentence_structure", subordinate_clauses:"sentence_structure",
+    capitals_and_full_stops:"punctuation", question_marks:"punctuation", commas_in_lists:"punctuation", apostrophes:"punctuation", speech_marks:"punctuation",
+    past_tense:"tenses", progressive_tense:"tenses", future_tense:"tenses", present_perfect_tense:"tenses", past_perfect_tense:"tenses",
+    synonyms:"vocabulary", antonyms:"vocabulary", prefixes:"vocabulary", suffixes:"vocabulary", homophones:"vocabulary",
+    powerful_vocabulary:"composition", sentence_openers:"composition", expanded_noun_phrases:"composition", cause_and_effect_sentences:"composition", combining_sentences:"composition",
+  },
+};
 // Migrates any state saved by an older version of the app (missing fields,
-// or a whole subject that didn't exist yet, like History) so upgrading
-// never crashes or loses progress.
+// a whole subject that didn't exist yet, or — as of 2026-08-01 — the old
+// topic+tier model entirely for Math/English) so upgrading never crashes or
+// silently loses progress.
 function migrateState(s){
-  for(const subj of Object.keys(CURRICULUM)){
-    if(!s[subj]) s[subj] = {topics:{}};
-    if(!s[subj].topics) s[subj].topics = {};
-    for(const t of CURRICULUM[subj].topics){
-      const existing = s[subj].topics[t.id];
-      if(!existing){ s[subj].topics[t.id] = defaultTopicState(); continue; }
-      if(existing.correctStreak === undefined) existing.correctStreak = existing.streak || 0;
-      if(existing.wrongStreak === undefined) existing.wrongStreak = 0;
-      delete existing.streak;
-      if(existing.tier === undefined) existing.tier = 0;
-      if(existing.attempts === undefined) existing.attempts = 0;
-      if(existing.correct === undefined) existing.correct = 0;
-      if(existing.needsReview === undefined) existing.needsReview = false;
-      if(existing.roundsSince === undefined) existing.roundsSince = 0;
-      if(!Array.isArray(existing.recentQuestions)) existing.recentQuestions = [];
-      if(!Array.isArray(existing.seenAtTier)) existing.seenAtTier = [];
-      if(!existing.concepts || typeof existing.concepts !== "object") existing.concepts = {};
-      // Older saves (pre-100%-rule) had sessionHistory/readyForBonus fields
-      // for the retired 3-session/95%-aggregate gate — no longer used, drop
-      // them if present rather than carrying dead state forward.
-      delete existing.sessionHistory;
-      delete existing.readyForBonus;
-      // Old tier scale was 0-3 (Year2 Basics, Year2 Advanced, Year3, Year4);
-      // new scale is 0-8 (Basic/Intermediate/Advanced within each of Year
-      // 2/3/4). Map conservatively so nobody's displayed level is overstated:
-      // old Year2-Basics/Advanced map to the SAME-MEANING new tier (0, 2).
-      // Old "reached Year3"/"reached Year4" map to the BASIC sub-level of
-      // that year (3, 6) rather than presuming Intermediate/Advanced, since
-      // the old rule to get there was much easier (2-in-a-row) than the
-      // current one (a full 10-question module at 100%) — he can re-earn
-      // those sub-levels properly rather than starting artificially "ahead."
-      if(CURRICULUM[subj].yearForTier && CURRICULUM[subj].yearForTier.length===9 && existing._migratedTierScale!=="v9"){
-        const OLD_TO_NEW_TIER = [0,2,3,6];
-        existing.tier = OLD_TO_NEW_TIER[Math.min(existing.tier,3)];
-        existing._migratedTierScale = "v9";
-        existing.seenAtTier = [];
+  // ---- History: unchanged topic+tier model ----
+  if(!s.history) s.history = {topics:{}};
+  if(!s.history.topics) s.history.topics = {};
+  for(const t of CURRICULUM.history.topics){
+    const existing = s.history.topics[t.id];
+    if(!existing){ s.history.topics[t.id] = defaultTopicState(); continue; }
+    if(existing.correctStreak === undefined) existing.correctStreak = existing.streak || 0;
+    if(existing.wrongStreak === undefined) existing.wrongStreak = 0;
+    delete existing.streak;
+    if(existing.tier === undefined) existing.tier = 0;
+    if(existing.attempts === undefined) existing.attempts = 0;
+    if(existing.correct === undefined) existing.correct = 0;
+    if(existing.needsReview === undefined) existing.needsReview = false;
+    if(existing.roundsSince === undefined) existing.roundsSince = 0;
+    if(!Array.isArray(existing.recentQuestions)) existing.recentQuestions = [];
+    if(!Array.isArray(existing.seenAtTier)) existing.seenAtTier = [];
+    if(!existing.concepts || typeof existing.concepts !== "object") existing.concepts = {};
+    delete existing.sessionHistory;
+    delete existing.readyForBonus;
+    if(existing._migratedToConceptModel !== "v1"){
+      const maxTier = CURRICULUM.history.tierLabels.length - 1;
+      for(let t2=0; t2<=maxTier; t2++){
+        existing.concepts[t2] = defaultConceptState();
+        existing.concepts[t2].mastery = t2 < existing.tier ? 0.85 : 0.15;
       }
-      // One-time seed of the per-tier concept model (all three subjects)
-      // from the old flat tier scalar: tiers below the old tier get a high
-      // mastery prior (he'd already advanced past them under the old rule),
-      // the current tier and above start low (not yet demonstrated under
-      // the new model) — so switching models doesn't wipe or artificially
-      // inflate progress. Guarded so it only ever runs once per save.
-      if(existing._migratedToConceptModel !== "v1"){
-        const maxTier = CURRICULUM[subj].tierLabels.length - 1;
-        for(let t=0; t<=maxTier; t++){
-          existing.concepts[t] = defaultConceptState();
-          existing.concepts[t].mastery = t < existing.tier ? 0.85 : 0.15;
+      existing._migratedToConceptModel = "v1";
+    }
+  }
+  const validHistoryIds = new Set(CURRICULUM.history.topics.map(t=>t.id));
+  for(const savedId of Object.keys(s.history.topics)){
+    if(!validHistoryIds.has(savedId)) delete s.history.topics[savedId];
+  }
+
+  // ---- Math/English: flat skill-graph model (redesigned 2026-08-01) ----
+  for(const subj of ["math","english"]){
+    if(!s[subj]) s[subj] = {};
+    if(!s[subj].skills) s[subj].skills = {};
+    if(s[subj]._migratedToSkillGraph !== "v1"){
+      // Old shape (pre-redesign) had s[subj].topics[topicId].concepts[tier].
+      // Seed each new skill's prior from its source topic's REAL play data
+      // (average mastery across that topic's touched tiers), not a blind
+      // reset — the whole point of this redesign is a more accurate model,
+      // not throwing away weeks of real evidence. Confidence is deliberately
+      // kept modest even when inherited: the new skill is narrower than the
+      // old topic it came from, so it hasn't truly been independently
+      // assessed yet under the new, more granular model.
+      const oldTopics = (s[subj].topics) || {};
+      for(const skillId of Object.keys(SKILLS[subj])){
+        if(s[subj].skills[skillId]) continue;
+        const oldTopicId = SKILL_SOURCE_TOPIC[subj][skillId];
+        const oldTopic = oldTopicId ? oldTopics[oldTopicId] : null;
+        if(oldTopic && oldTopic.concepts && Object.keys(oldTopic.concepts).length){
+          const concepts = Object.values(oldTopic.concepts);
+          const totalAttempts = concepts.reduce((sum,c)=>sum+(c.attempts||0),0);
+          if(totalAttempts > 0){
+            const avgMastery = concepts.reduce((sum,c)=>sum+(c.mastery||0.1),0) / concepts.length;
+            const seeded = defaultConceptState();
+            seeded.mastery = avgMastery;
+            seeded.confidence = Math.min(0.4, confidenceFromAttempts(totalAttempts) * 0.5);
+            s[subj].skills[skillId] = seeded;
+          }
         }
-        existing._migratedToConceptModel = "v1";
       }
+      s[subj]._migratedToSkillGraph = "v1";
+      delete s[subj].topics; // old shape retired — skills is now the source of truth
     }
-    // Prune any saved topic no longer in CURRICULUM (e.g. flag/
-    // independence_day/washington, removed 2026-07-31 at JC's request since
-    // Grayson already covered them in real life) — otherwise stale progress
-    // data would sit in STATE/Firestore forever, unreachable but taking up
-    // space and confusing future debugging.
-    const validIds = new Set(CURRICULUM[subj].topics.map(t=>t.id));
-    for(const savedId of Object.keys(s[subj].topics)){
-      if(!validIds.has(savedId)) delete s[subj].topics[savedId];
+    // Prune any saved skill no longer in SKILLS (future-proofing, same
+    // pattern as History's topic pruning above).
+    const validSkillIds = new Set(Object.keys(SKILLS[subj]));
+    for(const savedId of Object.keys(s[subj].skills)){
+      if(!validSkillIds.has(savedId)) delete s[subj].skills[savedId];
     }
   }
+
   if(s.updatedAt === undefined) s.updatedAt = 0;
-  if(!s.history || Array.isArray(s.history) === false){
-    // "history" used to be a leftover empty array placeholder in older
-    // saves; Object.keys(CURRICULUM) above already turned it into a proper
-    // subject object, so nothing further to do here — this branch only
-    // guards against a stale array literal surviving migration.
-  }
   return s;
 }
 function loadState(){
@@ -1266,44 +1563,6 @@ function bumpRoundCounters(subject, touchedTopicIds){
   }
 }
 
-// Subject-wide "year" for math/english: the year of the topic he's weakest
-// in, since the goal is uniform mastery, not racing ahead on his favourite
-// topic while others lag. Returns null for subjects without yearForTier
-// (e.g. History, which uses depth labels instead of years). All three
-// subjects now read the per-tier concept model (currentDisplayTier) — none
-// of them write the old flat `tier` field anymore.
-function subjectYear(subject){
-  const cfg = CURRICULUM[subject];
-  if(!cfg.yearForTier) return null;
-  const tiers = cfg.topics.map(t => currentDisplayTier(subject, t.id));
-  return Math.min(...tiers.map(t => cfg.yearForTier[t]));
-}
-
-// Which topics are still sitting at the subject's lowest Year (the "floor"),
-// i.e. haven't yet caught up to topics that have already progressed to a
-// later Year. Per JC (2026-08-01): a session that keeps surfacing Year 3
-// content while some topics are still Year 2 isn't actually helping — Year 2
-// should be solidified broadly across topics before Year 3 gets emphasis.
-// The existing catchUpBonus in topicPriorityScore nudges toward behind
-// topics but isn't strong enough on its own once only 1-2 topics remain
-// behind (they lose 3-way weighted draws to already-advanced topics that
-// still look "due" or land in the ZPD sweet spot). This is the explicit
-// version of that same idea, applied at the Year level rather than the
-// individual-tier level, and only for subjects that have Years at all
-// (Math/English — History uses depth labels, not Years, so this is a no-op
-// there). Returns null if there's nothing to hold back (every topic is
-// already at the same Year — fully balanced, free to emphasize normally).
-function yearFloorCohort(subject){
-  const cfg = CURRICULUM[subject];
-  if(!cfg.yearForTier) return null;
-  const topicIds = cfg.topics.map(t => t.id);
-  const years = topicIds.map(id => cfg.yearForTier[currentDisplayTier(subject, id)]);
-  const floorYear = Math.min(...years);
-  const behind = topicIds.filter((id, i) => years[i] === floorYear);
-  if(behind.length === topicIds.length) return null; // already balanced
-  return behind;
-}
-
 /* ---------------------------------------------------------------------
    5b. ADAPTIVE LEARNER MODEL — all three subjects
    Per the Adaptive Tutor Design Specification: mastery is never a one-time
@@ -1338,26 +1597,13 @@ function yearFloorCohort(subject){
 // just produces confused guessing, not learning. History's topics are
 // independent historical facts/events with no real prerequisite structure,
 // so it gets an empty map (no gating) rather than a forced hierarchy.
+// Math/English used to have topic-level prerequisites here too, before the
+// 2026-08-01 skill-graph redesign moved that structure onto individual
+// skills (see SKILLS[subject][skillId].prereqs + skillPrereqsReady, section
+// 5c) — far more granular than 8/6 broad topics. Only History still uses
+// this topic-level map (and it's empty: independent facts, no gating).
 const SUBJECT_PREREQUISITES = {
-  math: {
-    place_value: [],
-    add_sub:     ["place_value"],
-    mult_div:    ["add_sub"],
-    fractions:   ["place_value", "mult_div"],
-    measurement: ["add_sub"],
-    geometry:    [],
-    statistics:  ["add_sub"],
-    reasoning:   ["add_sub", "mult_div"],
-  },
-  english: {
-    word_classes:       [],
-    sentence_structure:  ["word_classes"],
-    punctuation:         ["sentence_structure"],
-    tenses:              ["word_classes"],
-    vocabulary:          [],
-    composition:         ["sentence_structure", "punctuation"],
-  },
-  history: {}, // independent facts — no prerequisite gating
+  math: {}, english: {}, history: {},
 };
 
 // ---- Bayesian Knowledge Tracing parameters ----
@@ -1463,12 +1709,25 @@ function classifyMisconception(correctVal, chosenVal){
   return "conceptual";
 }
 
-// The single entry point that records one answer's worth of evidence for a
-// Math concept, updating every axis at once, then persists (and syncs).
-function updateConcept(subject, topicId, tier, {wasCorrect, hintUsed, responseTimeMs, misconceptionTag}){
-  const topicState = STATE[subject].topics[topicId];
+// Resolves the concept object being updated. History passes a real tier
+// (topic+tier model); Math/English pass tier undefined/null (flat skill
+// model) — this is the one place that difference is reconciled, so the
+// rest of the answer-recording logic (and the UI layer above it) can stay
+// completely shared between the two shapes.
+function conceptFor(subject, id, tier){
+  if(tier === undefined || tier === null){
+    if(!STATE[subject].skills[id]) STATE[subject].skills[id] = defaultConceptState();
+    return STATE[subject].skills[id];
+  }
+  const topicState = STATE[subject].topics[id];
   if(!topicState.concepts[tier]) topicState.concepts[tier] = defaultConceptState();
-  const c = topicState.concepts[tier];
+  return topicState.concepts[tier];
+}
+// The single entry point that records one answer's worth of evidence for a
+// concept (History topic+tier, or Math/English skill), updating every axis
+// at once, then persists (and syncs).
+function updateConcept(subject, id, tier, {wasCorrect, hintUsed, responseTimeMs, misconceptionTag}){
+  const c = conceptFor(subject, id, tier);
   const now = Date.now();
   updateStability(c, wasCorrect, now);
   c.mastery = bktUpdate(c.mastery, wasCorrect, hintUsed);
@@ -1486,10 +1745,13 @@ function updateConcept(subject, topicId, tier, {wasCorrect, hintUsed, responseTi
   }
   c.reviewHistory.push({t:now, correct:wasCorrect, hintUsed:!!hintUsed, responseTimeMs:responseTimeMs||null, misconception:misconceptionTag||null});
   if(c.reviewHistory.length > 50) c.reviewHistory.shift();
-  // Also bump the legacy attempts/correct counters so anything still reading
-  // them (e.g. a shared summary line) stays numerically sane.
-  topicState.attempts++;
-  if(wasCorrect) topicState.correct++;
+  if(tier !== undefined && tier !== null){
+    // Legacy attempts/correct counters on the topic wrapper — History only,
+    // kept numerically sane for anything still reading them.
+    const topicState = STATE[subject].topics[id];
+    topicState.attempts++;
+    if(wasCorrect) topicState.correct++;
+  }
   saveState(STATE);
   return c;
 }
@@ -1598,12 +1860,14 @@ function questionForConceptTier(subject, topicId, tier, usedTexts){
   return { topicId, tier, ...q };
 }
 
-// Builds one interleaved, adaptive session for any subject. Two modes:
+// Builds one interleaved, adaptive session for History (the only subject
+// still on this topic+tier engine — Math/English moved to buildSkillSession,
+// see section 5c). Two modes:
 //
-// FREE mode (no focusTopicId — "Practice Math/English/History"): each of the
-// 10 slots re-scores every topic (so priorities can shift mid-session), then
-// picks a weighted-random topic from the top few candidates — never fully
-// greedy (sessions would feel robotic) and never allowing more than
+// FREE mode (no focusTopicId — "Practice History"): each of the 10 slots
+// re-scores every topic (so priorities can shift mid-session), then picks a
+// weighted-random topic from the top few candidates — never fully greedy
+// (sessions would feel robotic) and never allowing more than
 // MAX_CONSECUTIVE_SAME_TOPIC in a row (interleaving, per the spec's "mixed
 // practice over blocked practice" principle).
 //
@@ -1617,23 +1881,11 @@ function questionForConceptTier(subject, topicId, tier, usedTexts){
 // blocked deliberate practice with periodic retrieval checks, rather than a
 // three-way split that barely reads as "focused" at all.
 //
-// History-only: attaches the topic's primer to the FIRST question of that
-// topic to appear in the session (not every occurrence), same "read it once
-// per visit" idea as the old buildHistoryRound.
-//
-// Year-floor balancing (non-focus slots, Math/English only): per JC
-// (2026-08-01), a session shouldn't keep surfacing Year 3 content while
-// some topics are still Year 2 — Year 2 should be solidified broadly before
-// Year 3 gets emphasis. yearFloorCohort() identifies which topics are still
-// at the subject's lowest Year; YEAR_FLOOR_SLOT_RATIO of the non-focus slots
-// are reserved for that cohort (weighted among themselves, same scoring as
-// usual), with the remainder going to more-advanced topics so they still get
-// light spaced-repetition coverage rather than being dropped outright. Once
-// every topic reaches the same Year, yearFloorCohort() returns null and this
-// has no effect — free weighting (including natural Year 3 emphasis) resumes.
+// Attaches the topic's primer to the FIRST question of that topic to appear
+// in the session (not every occurrence), same "read it once per visit" idea
+// as the old buildHistoryRound.
 const FOCUS_SLOT_RATIO = 0.8; // e.g. 8 of 10 slots go to the focus topic
 const FOCUS_MAX_RUN = 4;      // longest uninterrupted block before a breather question
-const YEAR_FLOOR_SLOT_RATIO = 0.8; // e.g. 8 of 10 non-focus slots go to the lagging Year
 function buildAdaptiveSession(subject, focusTopicId){
   const topics = CURRICULUM[subject].topics.map(t=>t.id);
   const usedTexts = new Set();
@@ -1646,8 +1898,6 @@ function buildAdaptiveSession(subject, focusTopicId){
   const frontier = frontierTier(subject);
   const focusSlotCap = Math.round(ADAPTIVE_SESSION_LENGTH * FOCUS_SLOT_RATIO);
   const maxRun = focusTopicId ? FOCUS_MAX_RUN : MAX_CONSECUTIVE_SAME_TOPIC;
-  const floorCohort = focusTopicId ? null : yearFloorCohort(subject);
-  const floorSlotCap = floorCohort ? Math.round(ADAPTIVE_SESSION_LENGTH * YEAR_FLOOR_SLOT_RATIO) : 0;
   for(let i=0;i<ADAPTIVE_SESSION_LENGTH;i++){
     let chosenId;
     const focusCountSoFar = out.filter(q=>q.topicId===focusTopicId).length;
@@ -1661,16 +1911,6 @@ function buildAdaptiveSession(subject, focusTopicId){
       if(focusTopicId) scored = scored.filter(s => s.id !== focusTopicId); // non-focus slots interleave OTHER topics
       if(lastTopic && lastTopicStreak >= maxRun){
         scored = scored.filter(s => s.id !== lastTopic);
-      }
-      if(floorCohort){
-        const floorCountSoFar = out.filter(q => floorCohort.includes(q.topicId)).length;
-        const inCohort = scored.filter(s => floorCohort.includes(s.id));
-        if(floorCountSoFar < floorSlotCap && inCohort.length){
-          scored = inCohort;
-        } else {
-          const outCohort = scored.filter(s => !floorCohort.includes(s.id));
-          if(outCohort.length) scored = outCohort;
-        }
       }
       scored.sort((a,b)=>b.score-a.score);
       const pool = scored.slice(0, 3);
@@ -1690,6 +1930,227 @@ function buildAdaptiveSession(subject, focusTopicId){
     if(chosenId === lastTopic) lastTopicStreak++; else { lastTopic = chosenId; lastTopicStreak = 1; }
   }
   bumpRoundCounters(subject, [...new Set(out.map(q=>q.topicId))]);
+  return out;
+}
+
+/* ---------------------------------------------------------------------
+   5c. SKILL-GRAPH TUTOR ENGINE (Math & English only) — redesigned
+   2026-08-01 per JC. Replaces topicPriorityScore/buildAdaptiveSession for
+   these two subjects with something that behaves like a one-to-one tutor
+   rather than a curriculum app: every skill has its own mastery/confidence,
+   Grayson can legitimately be ahead in one skill and behind in another
+   within the same subject, and — the key change — session TIME is
+   allocated by a Priority Score built from nine factors (not just "low
+   mastery"), then spent according to a 60-70/20-30/10-20 split across
+   repairing foundational gaps, maintaining/stretching strengths, and
+   spaced review. History is untouched — it stays on the topic+tier engine
+   above, since its content is independent facts with no real skill graph.
+   --------------------------------------------------------------------- */
+function skillMastery(subject, skillId){
+  const c = STATE[subject].skills[skillId];
+  return c ? c.mastery : 0.1;
+}
+function skillConfidence(subject, skillId){
+  const c = STATE[subject].skills[skillId];
+  return c ? c.confidence : 0;
+}
+// A skill's own prerequisites are all solidly there (mastery >= 0.5).
+function skillPrereqsReady(subject, skillId){
+  const prereqs = (SKILLS[subject][skillId] && SKILLS[subject][skillId].prereqs) || [];
+  return prereqs.every(pId => skillMastery(subject, pId) >= 0.5);
+}
+// Direct dependents currently gated BECAUSE this skill isn't solid yet — a
+// more immediate, concrete signal than the broader descendant count below
+// ("blocks future learning right now" vs "is foundational in general").
+function skillBlocksSomethingNow(subject, skillId){
+  const skills = SKILLS[subject];
+  return Object.keys(skills).some(otherId => {
+    const prereqs = skills[otherId].prereqs || [];
+    return prereqs.includes(skillId) && skillMastery(subject, skillId) < 0.5;
+  });
+}
+// Slope of recent correctness, -1..1: compares the newer half of the last
+// 8 attempts against the older half, so a couple of lucky/unlucky guesses
+// can't swing it. 0 if there isn't enough evidence yet to claim a trend.
+function learningTrend(concept){
+  const hist = (concept.reviewHistory || []).slice(-8);
+  if(hist.length < 4) return 0;
+  const mid = Math.floor(hist.length/2);
+  const rate = (arr) => arr.filter(h=>h.correct).length / arr.length;
+  return rate(hist.slice(mid)) - rate(hist.slice(0, mid));
+}
+const MAX_SKILL_DESCENDANTS = {
+  math: Math.max(1, ...Object.values(SKILL_DESCENDANTS.math)),
+  english: Math.max(1, ...Object.values(SKILL_DESCENDANTS.english)),
+};
+// The Priority Score (JC, 2026-08-01): "Priority should not simply equal
+// low mastery." Blends nine signals — foundational importance (how many
+// other skills descend from this one), current mastery, confidence in that
+// mastery estimate, presence of misconceptions, forgetting risk, whether
+// this skill is blocking a dependent RIGHT NOW, the expected impact of
+// improving it (headroom × how much it unlocks), and the recent learning
+// trend (already-improving skills ease off slightly; slipping ones get
+// urgency). This is what decides how session time gets allocated — see
+// buildSkillSession's 60-70/20-30/10-20 split.
+function skillPriorityScore(subject, skillId){
+  const concept = STATE[subject].skills[skillId] || defaultConceptState();
+  const mastery = concept.mastery;
+  const confidence = concept.confidence;
+  const forgetting = 1 - retrievalStrengthNow(concept);
+  const misconceptionCount = Object.values(concept.misconceptions || {}).reduce((a,b)=>a+b,0);
+  const trend = learningTrend(concept);
+  const descendants = SKILL_DESCENDANTS[subject][skillId] || 0;
+  const foundationalImportance = descendants / MAX_SKILL_DESCENDANTS[subject]; // 0..1
+  const blocksNow = skillBlocksSomethingNow(subject, skillId);
+  const neverAttempted = concept.lastSeenAt == null;
+
+  const masteryGapScore    = (1 - mastery);                              // headroom
+  const confidenceBonus    = (1 - confidence) * 0.3;                     // estimate still uncertain
+  const misconceptionBonus = Math.min(0.6, misconceptionCount * 0.2);    // repair urgency
+  const forgettingBonus    = forgetting * 0.8;                           // overdue for review
+  const foundationalBonus  = foundationalImportance * 0.9;               // unlocks a lot
+  const blocksBonus        = blocksNow ? 0.7 : 0;                        // literally gating something now
+  const impactBonus        = masteryGapScore * foundationalImportance * 0.6; // headroom x reach
+  const trendAdjustment    = trend > 0.3 ? -0.2 : (trend < -0.3 ? 0.3 : 0); // easing off vs urgency
+  const freshnessBonus     = neverAttempted ? 0.25 : 0;                  // don't let untouched skills hide forever
+
+  return Math.max(0.05, masteryGapScore*0.5 + confidenceBonus + misconceptionBonus +
+    forgettingBonus + foundationalBonus + blocksBonus + impactBonus + trendAdjustment + freshnessBonus);
+}
+// Human-readable reason a skill was picked, used by the dashboard so a
+// parent can see WHY today's session looked the way it did, not just what
+// the numbers are. Picks the single most influential factor.
+function skillPriorityReason(subject, skillId){
+  const concept = STATE[subject].skills[skillId] || defaultConceptState();
+  if(concept.lastSeenAt == null) return "not attempted yet";
+  const forgetting = 1 - retrievalStrengthNow(concept);
+  const misconceptionCount = Object.values(concept.misconceptions || {}).reduce((a,b)=>a+b,0);
+  const blocksNow = skillBlocksSomethingNow(subject, skillId);
+  const descendants = SKILL_DESCENDANTS[subject][skillId] || 0;
+  const trend = learningTrend(concept);
+  if(blocksNow) return "blocking other skills that depend on it";
+  if(misconceptionCount >= 2) return "a repeated misconception needs correcting";
+  if(trend < -0.3) return "recent answers are trending down";
+  if(forgetting > 0.6) return "overdue for review — memory is fading";
+  if(descendants >= 3 && concept.mastery < 0.6) return "foundational — a lot depends on this one";
+  if(concept.mastery >= 0.8) return "strong — light maintenance to keep it sharp";
+  return "building toward mastery";
+}
+
+function questionForSkill(subject, skillId, usedTexts){
+  if(!STATE[subject].skills[skillId]) STATE[subject].skills[skillId] = defaultConceptState();
+  const concept = STATE[subject].skills[skillId];
+  const gens = G[subject][skillId];
+  const seen = new Set(concept.seenTexts || []);
+  let q, attempts = 0;
+  do { q = gens[randInt(0, gens.length-1)](); attempts++; }
+  while((usedTexts.has(q.q) || seen.has(q.q)) && attempts < 60);
+  usedTexts.add(q.q);
+  if(!concept.seenTexts.includes(q.q)) concept.seenTexts.push(q.q);
+  if(concept.seenTexts.length > 40) concept.seenTexts.shift();
+  // topicId alias: lets the shared UI/updateConcept layer treat a skill
+  // exactly like a tier-less "topic" (tier stays undefined), so History's
+  // and Math/English's question objects can flow through the same render/
+  // answer code paths without a subject-by-subject UI fork everywhere.
+  return { topicId: skillId, skillId, ...q };
+}
+
+const SKILL_SESSION_LENGTH = 10;
+// JC's bands: 60-70% repair, 20-30% maintain, 10-20% review. Review's slot
+// count is reserved FIRST (as a floor), then repair/maintain split the
+// remainder proportionally — reserving repair and maintain independently
+// via two separate Math.round() calls let their sums swallow 100% of a
+// 10-slot session (7+3=10) with nothing left for review, which silently
+// violated the 10-20% floor. Reserving review first guarantees it always
+// gets a real, non-zero share, matching what JC actually asked for: some
+// spaced retrieval every session, not "whenever there happen to be leftover
+// slots."
+const REPAIR_SHARE = 0.65, MAINTAIN_SHARE = 0.25, REVIEW_SHARE = 0.15; // midpoints of 60-70/20-30/10-20
+const SKILL_FOCUS_SLOT_RATIO = 0.8;
+const SKILL_FOCUS_MAX_RUN = 4;
+const MAX_CONSECUTIVE_SAME_SKILL = 2;
+
+// Weighted-random pick from the top-3 of a scored list — same "never fully
+// greedy, but not a flat lottery either" shape used throughout this app.
+function weightedPickTop3(scored){
+  const pool = scored.slice(0, 3);
+  const totalWeight = pool.reduce((sum,s)=>sum+s.score, 0);
+  let r = Math.random()*totalWeight;
+  let chosen = pool[0].id;
+  for(const s of pool){ r -= s.score; if(r<=0){ chosen = s.id; break; } }
+  return chosen;
+}
+
+// Builds one 10-question session for Math or English. FREE mode allocates
+// slots across three buckets by Priority Score (repair/maintain/review);
+// FOCUS mode (a specific skill picked from the hub) reserves 80% of slots
+// for that skill, same "blocked practice with breathers" shape as History's
+// focus mode, with the rest still drawn from the normal three-bucket blend
+// so focusing on one skill doesn't mean total tunnel vision.
+function buildSkillSession(subject, focusSkillId){
+  const allIds = Object.keys(SKILLS[subject]);
+  const usedTexts = new Set();
+  const out = [];
+  let lastId = null, lastStreak = 0;
+  const primerShown = new Set(); // keyed by qtag (passage title), for reading skills
+
+  const focusSlotCap = focusSkillId ? Math.round(SKILL_SESSION_LENGTH * SKILL_FOCUS_SLOT_RATIO) : 0;
+  const maxRun = focusSkillId ? SKILL_FOCUS_MAX_RUN : MAX_CONSECUTIVE_SAME_SKILL;
+
+  for(let i=0; i<SKILL_SESSION_LENGTH; i++){
+    let chosenId;
+    const focusCountSoFar = out.filter(q=>q.skillId===focusSkillId).length;
+    const focusDue = focusSkillId && focusCountSoFar < focusSlotCap && (lastId !== focusSkillId || lastStreak < maxRun);
+    if(focusDue){
+      chosenId = focusSkillId;
+    } else {
+      let candidates = allIds.filter(id => id !== focusSkillId);
+      if(lastId && lastStreak >= maxRun) candidates = candidates.filter(id => id !== lastId);
+      // Three buckets, scored the same way (skillPriorityScore) but drawn
+      // from different eligible pools — this is what turns the priority
+      // score into an actual 60/20/10-ish time allocation rather than just
+      // a ranking.
+      const repairEligible = candidates.filter(id => skillPrereqsReady(subject, id) && skillMastery(subject,id) < 0.8);
+      const maintainEligible = candidates.filter(id => skillMastery(subject,id) >= 0.7);
+      const reviewEligible = candidates;
+
+      const repairSoFar = out.filter(q => q.bucket==="repair").length;
+      const maintainSoFar = out.filter(q => q.bucket==="maintain").length;
+      // Review's slot count is reserved FIRST as a floor, then repair/maintain
+      // split whatever remains proportionally. Rounding repair and maintain
+      // independently (old code) let their sums swallow the whole session
+      // (7+3=10) and starve review to 0% — see the comment on REVIEW_SHARE.
+      const slotsReview = Math.max(1, Math.round(SKILL_SESSION_LENGTH*REVIEW_SHARE));
+      const slotsRemaining = SKILL_SESSION_LENGTH - slotsReview;
+      const slotsRepair = Math.round(slotsRemaining * (REPAIR_SHARE/(REPAIR_SHARE+MAINTAIN_SHARE)));
+      const slotsMaintain = slotsRemaining - slotsRepair;
+
+      let bucket, pool;
+      if(repairSoFar < slotsRepair && repairEligible.length){
+        bucket = "repair"; pool = repairEligible;
+      } else if(maintainSoFar < slotsMaintain && maintainEligible.length){
+        bucket = "maintain"; pool = maintainEligible;
+      } else {
+        bucket = "review"; pool = reviewEligible.length ? reviewEligible : allIds;
+      }
+      const scored = pool.map(id => ({id, score: skillPriorityScore(subject, id)}))
+                          .sort((a,b)=>b.score-a.score);
+      chosenId = weightedPickTop3(scored);
+      var chosenBucket = bucket;
+    }
+    const q = questionForSkill(subject, chosenId, usedTexts);
+    q.bucket = focusDue ? "focus" : chosenBucket;
+    if(SKILLS[subject][chosenId].pool && q.qtag && !primerShown.has(q.qtag)){
+      // Reading skills carry their own primer/qtag per question (see
+      // G.english.reading_literal/reading_inference) — show it once per
+      // passage per session, same idea as History's primer-once behavior.
+      primerShown.add(q.qtag);
+    } else if(SKILLS[subject][chosenId].pool){
+      delete q.primer; // already shown this passage earlier in the session
+    }
+    out.push(q);
+    if(chosenId === lastId) lastStreak++; else { lastId = chosenId; lastStreak = 1; }
+  }
   return out;
 }
 
@@ -1750,7 +2211,6 @@ function cloudPull(){
 const app = document.getElementById("app");
 let currentRound = null, currentIndex = 0, currentSubject = null, roundResults = [];
 let primerAcknowledged = {}; // topicId -> true, once its primer has been shown this session
-let yearBeforeRound = null;  // subjectYear() snapshot taken at session start, for celebrating advances
 let questionShownAt = null;  // timestamp for response-time tracking
 let hintRevealed = false;
 
@@ -1778,57 +2238,93 @@ function renderHome(){
 // per-topic "Focus on this" option kept for agency/navigation (useful with a
 // 6-year-old who likes to choose what he's working on) without abandoning
 // interleaving entirely (see buildAdaptiveSession's focusTopicId handling).
+// Generic "what do we call this thing" helper — History identifies by
+// topicId (CURRICULUM.history.topics), Math/English by skillId (SKILLS).
+// Centralizing this is what lets renderPrimer/renderAdaptiveQuestion/
+// answerAdaptive stay shared across both models instead of forking.
+function labelFor(subject, id){
+  if(subject === "history") return CURRICULUM.history.topics.find(t=>t.id===id).name;
+  return (SKILLS[subject][id] && SKILLS[subject][id].label) || id;
+}
+
 function renderSubjectHub(subject){
   const cfg = CURRICULUM[subject];
-  const frontier = frontierTier(subject);
-  const rows = cfg.topics.map(t=>{
-    const tier = currentDisplayTier(subject, t.id);
-    const concept = STATE[subject].topics[t.id].concepts[tier] || defaultConceptState();
-    const rs = Math.round(retrievalStrengthNow(concept)*100);
+  if(subject === "history"){
+    const frontier = frontierTier(subject);
+    const rows = cfg.topics.map(t=>{
+      const tier = currentDisplayTier(subject, t.id);
+      const concept = STATE[subject].topics[t.id].concepts[tier] || defaultConceptState();
+      const rs = Math.round(retrievalStrengthNow(concept)*100);
+      const masteryPct = Math.round(concept.mastery*100);
+      const dueTag = rs < REVIEW_DUE_THRESHOLD*100 && concept.lastSeenAt
+        ? ` <span style="color:#d97706; font-weight:700;">· due for review</span>` : "";
+      const behindTag = tier < frontier
+        ? ` <span style="color:#2563eb; font-weight:700;">· catching up</span>` : "";
+      return `<div class="summary-stat" style="display:block;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="topic-name">${t.name}${dueTag}${behindTag}</span>
+          <span class="tier-badge t${tier % 4}">${cfg.tierLabels[tier]}</span>
+        </div>
+        <div class="explain">Mastery ${masteryPct}% · memory freshness ${concept.lastSeenAt ? rs+"%" : "not started"}</div>
+        <button class="dashboard-btn" style="margin-top:8px;" onclick="startAdaptiveSession('${subject}','${t.id}')">Focus on this</button>
+      </div>`;
+    }).join("");
+    app.innerHTML = `
+      <div class="card">
+        <button class="back-link" onclick="renderHome()">Home</button>
+        <h1>${cfg.icon} ${cfg.label}</h1>
+        <p class="subject-summary">A mixed, adaptive session — topics he's behind on get extra focus, plus whatever's due for review or in the right challenge zone.</p>
+        <button class="next-btn" onclick="startAdaptiveSession('${subject}')">🎯 Practice ${cfg.label}</button>
+        <h1 style="font-size:1.05rem; margin-top:18px;">Or focus on one topic</h1>
+        ${rows}
+      </div>`;
+    return;
+  }
+  // Math/English: skill-graph hub. Skills are sorted by Priority Score so
+  // the ones the tutor would actually spend the most time on float to the
+  // top here too — the hub and the session should tell a consistent story.
+  const skillIds = Object.keys(SKILLS[subject]).sort((a,b)=>skillPriorityScore(subject,b)-skillPriorityScore(subject,a));
+  const rows = skillIds.map(id=>{
+    const concept = STATE[subject].skills[id] || defaultConceptState();
+    const rs = concept.lastSeenAt ? Math.round(retrievalStrengthNow(concept)*100) : null;
     const masteryPct = Math.round(concept.mastery*100);
-    const dueTag = rs < REVIEW_DUE_THRESHOLD*100 && concept.lastSeenAt
+    const dueTag = (rs !== null && rs < REVIEW_DUE_THRESHOLD*100)
       ? ` <span style="color:#d97706; font-weight:700;">· due for review</span>` : "";
-    // Behind his OWN most-advanced topic in this subject — Practice sessions
-    // give this extra weight until it catches up, per JC's request to
-    // prioritize closing gaps over racing ahead on his strongest topic.
-    const behindTag = tier < frontier
-      ? ` <span style="color:#2563eb; font-weight:700;">· catching up</span>` : "";
     return `<div class="summary-stat" style="display:block;">
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="topic-name">${t.name}${dueTag}${behindTag}</span>
-        <span class="tier-badge t${tier % 4}">${cfg.tierLabels[tier]}</span>
+        <span class="topic-name">${SKILLS[subject][id].label}${dueTag}</span>
+        <span class="tier-badge t${Math.min(3,Math.floor((1-concept.mastery)*4))}">Year ${SKILLS[subject][id].year} ref</span>
       </div>
-      <div class="explain">Mastery ${masteryPct}% · memory freshness ${concept.lastSeenAt ? rs+"%" : "not started"}</div>
-      <button class="dashboard-btn" style="margin-top:8px;" onclick="startAdaptiveSession('${subject}','${t.id}')">Focus on this</button>
+      <div class="explain">Mastery ${masteryPct}% · ${concept.lastSeenAt ? `memory freshness ${rs}%` : "not attempted yet"}</div>
+      <button class="dashboard-btn" style="margin-top:8px;" onclick="startAdaptiveSession('${subject}','${id}')">Focus on this skill</button>
     </div>`;
   }).join("");
   app.innerHTML = `
     <div class="card">
       <button class="back-link" onclick="renderHome()">Home</button>
       <h1>${cfg.icon} ${cfg.label}</h1>
-      <p class="subject-summary">A mixed, adaptive session — topics he's behind on get extra focus, plus whatever's due for review or in the right challenge zone.</p>
+      <p class="subject-summary">Every skill is tracked independently — Grayson can be ahead in one and behind in another, and that's expected. A practice session spends most of its time repairing the highest-priority gaps, some time gently stretching his strengths, and a little on mixed review so nothing gets forgotten.</p>
       <button class="next-btn" onclick="startAdaptiveSession('${subject}')">🎯 Practice ${cfg.label}</button>
-      <h1 style="font-size:1.05rem; margin-top:18px;">Or focus on one topic</h1>
+      <h1 style="font-size:1.05rem; margin-top:18px;">Or focus on one skill</h1>
       ${rows}
     </div>`;
 }
 
-function startAdaptiveSession(subject, focusTopicId){
+function startAdaptiveSession(subject, focusId){
   currentSubject = subject;
   primerAcknowledged = {};
-  yearBeforeRound = subjectYear(subject);
-  currentRound = buildAdaptiveSession(subject, focusTopicId);
+  currentRound = subject === "history" ? buildAdaptiveSession(subject, focusId) : buildSkillSession(subject, focusId);
   currentIndex = 0;
   roundResults = [];
   renderAdaptiveQuestion();
 }
 
 function renderPrimer(q){
-  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
+  const name = labelFor(currentSubject, q.topicId);
   app.innerHTML = `
     <div class="card">
       <button class="back-link" onclick="renderHome()">Exit</button>
-      <span class="qtag">${topicName}</span>
+      <span class="qtag">${q.qtag || name}</span>
       <p class="primer-text">📖 ${q.primer}</p>
       <button class="next-btn" onclick="acknowledgePrimer()">I've read it — let's go!</button>
     </div>`;
@@ -1851,12 +2347,12 @@ function renderAdaptiveQuestion(){
     else if(i === currentIndex) cls += " current";
     return `<div class="${cls}"></div>`;
   }).join("");
-  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
+  const name = labelFor(currentSubject, q.topicId);
   app.innerHTML = `
     <div class="card">
       <button class="back-link" onclick="renderHome()">Exit</button>
       <div class="progress-strip">${dots}</div>
-      <span class="qtag">${topicName} · Q${currentIndex+1} of ${total}</span>
+      <span class="qtag">${q.qtag || name} · Q${currentIndex+1} of ${total}</span>
       <p class="question">${q.q}</p>
       <div class="options" id="options">
         ${q.options.map((opt,i)=>`<button class="opt" data-i="${i}" onclick="answerAdaptive(${i})">${opt}</button>`).join("")}
@@ -1868,13 +2364,16 @@ function renderAdaptiveQuestion(){
     </div>`;
 }
 
-// Generic per-topic strategy hints, one bank per subject — shown on request
-// rather than after answering. Deliberately NOT derived from a question's
-// `explain` text (that always contains the final answer, which would make
-// "hint" mean "just tell me the answer" — a real bug caught in Math before
-// this ever shipped). Tracked (hintRevealed) so the learner model discounts
-// the evidence value of a subsequent correct answer (see bktUpdate).
-const SUBJECT_HINTS = {
+// Generic per-topic/per-skill strategy hints — shown on request rather than
+// after answering. Deliberately NOT derived from a question's `explain`
+// text (that always contains the final answer — a real bug caught in Math
+// before this ever shipped). Tracked (hintRevealed) so the learner model
+// discounts the evidence value of a subsequent correct answer (bktUpdate).
+// Math/English hints are inherited from the topic each skill was split out
+// of (still contextually accurate — e.g. "Addition within 20" and "Column
+// Addition" both benefit from the same "count up / break into tens" idea),
+// with a handful of specific overrides for the genuinely new skills.
+const TOPIC_HINTS_LEGACY = {
   math: {
     place_value: "Look at each digit's position — is it in the ones, tens, hundreds, or thousands place?",
     add_sub:     "Try counting up from the smaller number, or break the numbers into tens and ones.",
@@ -1893,6 +2392,24 @@ const SUBJECT_HINTS = {
     vocabulary:          "Sound the word out part by part, and think of any spelling rules you know.",
     composition:         "Think about what makes writing clear and interesting to read.",
   },
+};
+const SKILL_HINTS_NEW = {
+  math: {
+    subtraction_across_zeros: "When a digit you need to borrow from is 0, borrow from the next column along first.",
+    roman_numerals: "I=1, V=5, X=10, L=50, C=100. A smaller symbol before a bigger one means subtract; after means add.",
+  },
+  english: {
+    fronted_adverbials: "Look for a phrase before the comma that tells you WHEN, WHERE, or HOW — that's the fronted adverbial.",
+    spelling_patterns: "Say the word slowly and think about the spelling rule (doubling, changing y to i, adding es).",
+    reading_literal: "The answer is stated directly in the passage — reread it and look for the exact fact.",
+    reading_inference: "The answer isn't written directly — think about what the character's actions or feelings suggest.",
+  },
+};
+const SUBJECT_HINTS = {
+  math: Object.fromEntries(Object.keys(SKILLS.math).map(id =>
+    [id, SKILL_HINTS_NEW.math[id] || TOPIC_HINTS_LEGACY.math[SKILL_SOURCE_TOPIC.math[id]] || null])),
+  english: Object.fromEntries(Object.keys(SKILLS.english).map(id =>
+    [id, SKILL_HINTS_NEW.english[id] || TOPIC_HINTS_LEGACY.english[SKILL_SOURCE_TOPIC.english[id]] || null])),
   history: {
     lincoln:          "Think back to what the passage said about him and the Civil War.",
     thanksgiving:     "Think back to who was involved and what happened in the story.",
@@ -1931,19 +2448,30 @@ function answerAdaptive(i){
   // noise rather than insight, so it's skipped for those two subjects.
   const misconceptionTag = (!wasCorrect && currentSubject === "math")
     ? classifyMisconception(q.options[q.correctIndex], q.options[i]) : null;
-  const before = currentDisplayTier(currentSubject, q.topicId);
-  updateConcept(currentSubject, q.topicId, q.tier, {
+  const isHistory = currentSubject === "history";
+  const beforeMastery = isHistory
+    ? masteryAtTier(currentSubject, q.topicId, currentDisplayTier(currentSubject, q.topicId))
+    : skillMastery(currentSubject, q.topicId);
+  updateConcept(currentSubject, q.topicId, isHistory ? currentDisplayTier(currentSubject, q.topicId) : undefined, {
     wasCorrect, hintUsed: hintRevealed, responseTimeMs, misconceptionTag
   });
-  const after = currentDisplayTier(currentSubject, q.topicId);
-  const topicName = CURRICULUM[currentSubject].topics.find(t=>t.id===q.topicId).name;
+  // "Leveled up" = crossed the same 0.8 solid-mastery threshold the whole
+  // model uses elsewhere (History's tier scan, the old currentDisplayTier)
+  // — for skills this just means the skill itself crossed into "mastered"
+  // territory, not that a Year boundary was crossed (skills don't have
+  // Years to cross; see JC's 2026-08-01 redesign note).
+  const afterMastery = isHistory
+    ? masteryAtTier(currentSubject, q.topicId, currentDisplayTier(currentSubject, q.topicId))
+    : skillMastery(currentSubject, q.topicId);
+  const leveledUp = beforeMastery < 0.8 && afterMastery >= 0.8;
+  const name = labelFor(currentSubject, q.topicId);
   roundResults.push({
-    topicId:q.topicId, topicName, correct:wasCorrect, question:q.q, explain:q.explain,
-    leveledUp: after > before, misconceptionTag
+    topicId:q.topicId, topicName:name, correct:wasCorrect, question:q.q, explain:q.explain,
+    leveledUp, misconceptionTag
   });
   const fb = document.getElementById("feedbackZone");
-  const levelNote = after > before
-    ? `<div class="explain" style="color:#16a34a; font-weight:600;">⬆ ${topicName} mastery moved up to ${CURRICULUM[currentSubject].tierLabels[after]}!</div>` : "";
+  const levelNote = leveledUp
+    ? `<div class="explain" style="color:#16a34a; font-weight:600;">⬆ ${name} mastery reached a solid level!</div>` : "";
   fb.innerHTML = `
     <div class="feedback ${wasCorrect?"good":"bad"}">${wasCorrect?"Nice one! ✅":"Not quite — here's why:"}</div>
     <div class="explain">${q.explain}</div>
@@ -1969,14 +2497,6 @@ function renderAdaptiveSummary(){
   const levelUpHTML = leveledUpTopics.length
     ? `<p class="explain" style="margin-top:10px;">⬆ Mastery moved up in: <strong>${leveledUpTopics.join(", ")}</strong></p>` : "";
 
-  // Year-advance celebration: only for subjects with yearForTier (math/
-  // english). Compares the subject-wide year at session start vs now, so it
-  // only fires when the WHOLE subject crosses into a new year.
-  const yearAfterRound = subjectYear(currentSubject);
-  const yearBannerHTML = (yearBeforeRound !== null && yearAfterRound !== null && yearAfterRound > yearBeforeRound)
-    ? `<div class="year-banner">🎓 Amazing work — moving into Year ${yearAfterRound} for ${cfg.label}!</div>`
-    : "";
-
   // Surface recurring misconception patterns from THIS session in plain
   // language, rather than just "missed 2" — this is the point of tracking
   // them at all: telling you and Grayson WHAT kind of mistake keeps showing up.
@@ -1994,7 +2514,6 @@ function renderAdaptiveSummary(){
       <div class="big-emoji">${emoji}</div>
       <h1 style="text-align:center;">${correctCount} / ${total} correct</h1>
       <p class="subtitle" style="text-align:center;">${cfg.label} session complete.</p>
-      ${yearBannerHTML}
       ${levelUpHTML}
       ${misconceptionHTML}
       <button class="next-btn" onclick="startAdaptiveSession('${currentSubject}')">Practice ${cfg.label} again</button>
@@ -2006,18 +2525,37 @@ function renderAdaptiveSummary(){
 function renderDashboard(){
   const sections = Object.keys(CURRICULUM).map(subject=>{
     const cfg = CURRICULUM[subject];
-    const year = subjectYear(subject);
-    const summaryLine = year !== null
-      ? `<p class="subject-summary">Currently working in: <strong>Year ${year}</strong></p>`
-      : `<p class="subject-summary">Reading-based — depth grows as topics are mastered.</p>`;
-    const rows = cfg.topics.map(t=>{
-      // All three subjects now surface the adaptive learner model directly —
-      // mastery, confidence (evidence volume, kept independent per the
-      // spec), memory freshness, and any recurring misconception pattern —
-      // rather than the old single tier-badge + accuracy% view.
-      const tier = currentDisplayTier(subject, t.id);
-      const concept = STATE[subject].topics[t.id].concepts[tier] || defaultConceptState();
+    if(subject === "history"){
+      const rows = cfg.topics.map(t=>{
+        const tier = currentDisplayTier(subject, t.id);
+        const concept = STATE[subject].topics[t.id].concepts[tier] || defaultConceptState();
+        const rs = concept.lastSeenAt ? Math.round(retrievalStrengthNow(concept)*100) : null;
+        const dueTag = (rs !== null && rs < REVIEW_DUE_THRESHOLD*100)
+          ? ` <span style="color:#d97706; font-weight:700;">· due for review</span>` : "";
+        const topMisconception = Object.entries(concept.misconceptions||{}).sort((a,b)=>b[1]-a[1])[0];
+        const misconceptionLine = topMisconception
+          ? `<div class="explain">Recurring pattern: ${topMisconception[0]} (${topMisconception[1]}×)</div>` : "";
+        return `<div class="summary-stat" style="display:block;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="topic-name">${t.name}${dueTag}</span>
+            <span class="tier-badge t${tier % 4}">${cfg.tierLabels[tier]}</span>
+          </div>
+          <div class="explain">Mastery ${Math.round(concept.mastery*100)}% · confidence ${Math.round(concept.confidence*100)}%${rs!==null ? ` · memory freshness ${rs}%` : ""}</div>
+          ${misconceptionLine}
+        </div>`;
+      }).join("");
+      return `<h1 style="font-size:1.1rem; margin-top:18px;">${cfg.icon} ${cfg.label}</h1><p class="subject-summary">Reading-based — depth grows as topics are mastered.</p>${rows}`;
+    }
+    // Math/English: full skill-graph view, sorted by Priority Score
+    // (highest first) so the ranking IS the answer to "why is the tutor
+    // focusing on this today" — per JC, parents should see not just what
+    // Grayson knows, but why today's session looked the way it did.
+    const skillIds = Object.keys(SKILLS[subject]).sort((a,b)=>skillPriorityScore(subject,b)-skillPriorityScore(subject,a));
+    const rows = skillIds.map(id=>{
+      const concept = STATE[subject].skills[id] || defaultConceptState();
       const rs = concept.lastSeenAt ? Math.round(retrievalStrengthNow(concept)*100) : null;
+      const priority = skillPriorityScore(subject, id);
+      const reason = skillPriorityReason(subject, id);
       const dueTag = (rs !== null && rs < REVIEW_DUE_THRESHOLD*100)
         ? ` <span style="color:#d97706; font-weight:700;">· due for review</span>` : "";
       const topMisconception = Object.entries(concept.misconceptions||{}).sort((a,b)=>b[1]-a[1])[0];
@@ -2025,14 +2563,15 @@ function renderDashboard(){
         ? `<div class="explain">Recurring pattern: ${topMisconception[0]} (${topMisconception[1]}×)</div>` : "";
       return `<div class="summary-stat" style="display:block;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span class="topic-name">${t.name}${dueTag}</span>
-          <span class="tier-badge t${tier % 4}">${cfg.tierLabels[tier]}</span>
+          <span class="topic-name">${SKILLS[subject][id].label}${dueTag}</span>
+          <span class="tier-badge t${Math.min(3,Math.round(priority))}">Priority ${priority.toFixed(1)}</span>
         </div>
         <div class="explain">Mastery ${Math.round(concept.mastery*100)}% · confidence ${Math.round(concept.confidence*100)}%${rs!==null ? ` · memory freshness ${rs}%` : ""}</div>
+        <div class="explain">Why: ${reason}</div>
         ${misconceptionLine}
       </div>`;
     }).join("");
-    return `<h1 style="font-size:1.1rem; margin-top:18px;">${cfg.icon} ${cfg.label}</h1>${summaryLine}${rows}`;
+    return `<h1 style="font-size:1.1rem; margin-top:18px;">${cfg.icon} ${cfg.label}</h1><p class="subject-summary">Sorted by priority — top of the list is where today's session would spend most of its time (60-70% repairing gaps, 20-30% maintaining strengths, 10-20% spaced review).</p>${rows}`;
   }).join("");
   app.innerHTML = `
     <div class="card">
