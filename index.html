@@ -1279,6 +1279,31 @@ function subjectYear(subject){
   return Math.min(...tiers.map(t => cfg.yearForTier[t]));
 }
 
+// Which topics are still sitting at the subject's lowest Year (the "floor"),
+// i.e. haven't yet caught up to topics that have already progressed to a
+// later Year. Per JC (2026-08-01): a session that keeps surfacing Year 3
+// content while some topics are still Year 2 isn't actually helping — Year 2
+// should be solidified broadly across topics before Year 3 gets emphasis.
+// The existing catchUpBonus in topicPriorityScore nudges toward behind
+// topics but isn't strong enough on its own once only 1-2 topics remain
+// behind (they lose 3-way weighted draws to already-advanced topics that
+// still look "due" or land in the ZPD sweet spot). This is the explicit
+// version of that same idea, applied at the Year level rather than the
+// individual-tier level, and only for subjects that have Years at all
+// (Math/English — History uses depth labels, not Years, so this is a no-op
+// there). Returns null if there's nothing to hold back (every topic is
+// already at the same Year — fully balanced, free to emphasize normally).
+function yearFloorCohort(subject){
+  const cfg = CURRICULUM[subject];
+  if(!cfg.yearForTier) return null;
+  const topicIds = cfg.topics.map(t => t.id);
+  const years = topicIds.map(id => cfg.yearForTier[currentDisplayTier(subject, id)]);
+  const floorYear = Math.min(...years);
+  const behind = topicIds.filter((id, i) => years[i] === floorYear);
+  if(behind.length === topicIds.length) return null; // already balanced
+  return behind;
+}
+
 /* ---------------------------------------------------------------------
    5b. ADAPTIVE LEARNER MODEL — all three subjects
    Per the Adaptive Tutor Design Specification: mastery is never a one-time
@@ -1595,8 +1620,20 @@ function questionForConceptTier(subject, topicId, tier, usedTexts){
 // History-only: attaches the topic's primer to the FIRST question of that
 // topic to appear in the session (not every occurrence), same "read it once
 // per visit" idea as the old buildHistoryRound.
+//
+// Year-floor balancing (non-focus slots, Math/English only): per JC
+// (2026-08-01), a session shouldn't keep surfacing Year 3 content while
+// some topics are still Year 2 — Year 2 should be solidified broadly before
+// Year 3 gets emphasis. yearFloorCohort() identifies which topics are still
+// at the subject's lowest Year; YEAR_FLOOR_SLOT_RATIO of the non-focus slots
+// are reserved for that cohort (weighted among themselves, same scoring as
+// usual), with the remainder going to more-advanced topics so they still get
+// light spaced-repetition coverage rather than being dropped outright. Once
+// every topic reaches the same Year, yearFloorCohort() returns null and this
+// has no effect — free weighting (including natural Year 3 emphasis) resumes.
 const FOCUS_SLOT_RATIO = 0.8; // e.g. 8 of 10 slots go to the focus topic
 const FOCUS_MAX_RUN = 4;      // longest uninterrupted block before a breather question
+const YEAR_FLOOR_SLOT_RATIO = 0.8; // e.g. 8 of 10 non-focus slots go to the lagging Year
 function buildAdaptiveSession(subject, focusTopicId){
   const topics = CURRICULUM[subject].topics.map(t=>t.id);
   const usedTexts = new Set();
@@ -1609,6 +1646,8 @@ function buildAdaptiveSession(subject, focusTopicId){
   const frontier = frontierTier(subject);
   const focusSlotCap = Math.round(ADAPTIVE_SESSION_LENGTH * FOCUS_SLOT_RATIO);
   const maxRun = focusTopicId ? FOCUS_MAX_RUN : MAX_CONSECUTIVE_SAME_TOPIC;
+  const floorCohort = focusTopicId ? null : yearFloorCohort(subject);
+  const floorSlotCap = floorCohort ? Math.round(ADAPTIVE_SESSION_LENGTH * YEAR_FLOOR_SLOT_RATIO) : 0;
   for(let i=0;i<ADAPTIVE_SESSION_LENGTH;i++){
     let chosenId;
     const focusCountSoFar = out.filter(q=>q.topicId===focusTopicId).length;
@@ -1622,6 +1661,16 @@ function buildAdaptiveSession(subject, focusTopicId){
       if(focusTopicId) scored = scored.filter(s => s.id !== focusTopicId); // non-focus slots interleave OTHER topics
       if(lastTopic && lastTopicStreak >= maxRun){
         scored = scored.filter(s => s.id !== lastTopic);
+      }
+      if(floorCohort){
+        const floorCountSoFar = out.filter(q => floorCohort.includes(q.topicId)).length;
+        const inCohort = scored.filter(s => floorCohort.includes(s.id));
+        if(floorCountSoFar < floorSlotCap && inCohort.length){
+          scored = inCohort;
+        } else {
+          const outCohort = scored.filter(s => !floorCohort.includes(s.id));
+          if(outCohort.length) scored = outCohort;
+        }
       }
       scored.sort((a,b)=>b.score-a.score);
       const pool = scored.slice(0, 3);
