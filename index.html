@@ -178,8 +178,12 @@ const SKILLS = {
     subtraction_across_zeros:    { label:"Subtraction Across Zeros", year:3, prereqs:["subtraction_within_20","place_value_basics"] },
     column_addition:              { label:"Column Addition (Large Numbers)", year:4, prereqs:["addition_with_regrouping"] },
     column_subtraction:           { label:"Column Subtraction (Large Numbers)", year:4, prereqs:["subtraction_across_zeros"] },
-    multiplication_facts:        { label:"Multiplication Facts (Times Tables)", year:2, prereqs:["addition_within_20"] },
-    division_facts:               { label:"Division Facts", year:3, prereqs:["multiplication_facts"] },
+    // JC, 2026-08-01: times tables and division should require solid
+    // subtraction fluency too, not just addition -- previously only addition
+    // gated these, which let 2-4 lucky correct answers on addition alone
+    // unlock the whole multiplication/division branch.
+    multiplication_facts:        { label:"Multiplication Facts (Times Tables)", year:2, prereqs:["addition_within_20","subtraction_within_20"] },
+    division_facts:               { label:"Division Facts", year:3, prereqs:["multiplication_facts","subtraction_within_20"] },
     multiplication_2digit:        { label:"2-Digit Multiplication", year:3, prereqs:["multiplication_facts"] },
     division_with_remainders:      { label:"Division with Remainders", year:4, prereqs:["division_facts"] },
     multiplication_large_numbers:  { label:"Multiplying Large Numbers", year:4, prereqs:["multiplication_2digit"] },
@@ -577,6 +581,16 @@ G.math.comparing_fractions = [
       explain:`The smaller the bottom number, the bigger each part is — so ${correct} is bigger.`}; },
 ];
 G.math.fractions_on_number_line = [
+  // Ordered easiest-first (JC, 2026-08-01 audit): reading a labeled mark
+  // directly off N equal parts is a simple counting task; converting a
+  // percentage to a fraction first (below) adds a genuine extra abstraction
+  // step, so it now comes second even though both were originally written
+  // in the reverse order.
+  () => { const denom=pick([2,3,4]); const num=randInt(1,denom-1); const correct=`${num}/${denom}`;
+    const wrongs=[`${num}/${denom+1}`,`${num+1}/${denom}`].filter(w=>w!==correct);
+    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
+    return {q:`A number line from 0 to 1 is split into ${denom} equal parts. Which fraction is at the ${num}${num===1?"st":num===2?"nd":num===3?"rd":"th"} mark after 0?`,
+      options, correctIndex, explain:`${num} parts out of ${denom} equal parts = ${correct}.`}; },
   () => { const denom=pick([2,4]); const num=randInt(1,denom-1); const correct=`${num}/${denom}`;
     const posPct = Math.round((num/denom)*100);
     // Build wrongs from a pool of candidate fractions rather than a fixed
@@ -592,11 +606,6 @@ G.math.fractions_on_number_line = [
     const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
     return {q:`A number line goes from 0 to 1. A mark sits ${posPct}% of the way along. Which fraction is that?`,
       options, correctIndex, explain:`${posPct}% of the way from 0 to 1 = ${correct}.`}; },
-  () => { const denom=pick([2,3,4]); const num=randInt(1,denom-1); const correct=`${num}/${denom}`;
-    const wrongs=[`${num}/${denom+1}`,`${num+1}/${denom}`].filter(w=>w!==correct);
-    const {options,correctIndex}=makeMCQ(correct,wrongs,(x)=>String(x));
-    return {q:`A number line from 0 to 1 is split into ${denom} equal parts. Which fraction is at the ${num}${num===1?"st":num===2?"nd":num===3?"rd":"th"} mark after 0?`,
-      options, correctIndex, explain:`${num} parts out of ${denom} equal parts = ${correct}.`}; },
 ];
 G.math.decimals = [
   () => { const tenths=randInt(1,9); const correct=`0.${tenths}`;
@@ -2037,13 +2046,40 @@ function skillPriorityReason(subject, skillId){
   return "building toward mastery";
 }
 
+// JC, 2026-08-01: a skill's generator array is authored in easy-to-hard
+// order (index 0 = simplest phrasing/numbers, last index = hardest) -- but
+// questionForSkill used to draw uniformly at random across ALL of them
+// regardless of mastery, so a skill's very first-ever question could roll
+// its hardest variant (e.g. Telling Time's 24-hour-clock conversion showing
+// up before "It's 3 o'clock, what time is it?"). This weights the draw
+// toward whichever generator matches current mastery, without ever fully
+// ruling any generator out -- a low-mastery skill mostly sees easy
+// questions with an occasional stretch question, and a well-practiced skill
+// mostly sees hard ones but still gets occasional easy review questions
+// (real review pulls a skill in at ANY mastery level, so easy questions
+// should stay reachable even once a skill is strong).
+function pickGeneratorIndex(gens, mastery){
+  const n = gens.length;
+  if(n <= 1) return 0;
+  const idealIdx = mastery * (n - 1); // 0 (easiest) .. n-1 (hardest)
+  const weights = gens.map((_, i) => Math.max(0.05, 1 - Math.abs(i - idealIdx) / n));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for(let i = 0; i < n; i++){ r -= weights[i]; if(r <= 0) return i; }
+  return n - 1;
+}
 function questionForSkill(subject, skillId, usedTexts){
   if(!STATE[subject].skills[skillId]) STATE[subject].skills[skillId] = defaultConceptState();
   const concept = STATE[subject].skills[skillId];
   const gens = G[subject][skillId];
   const seen = new Set(concept.seenTexts || []);
+  // "pool" skills (currently just the two Reading Comprehension skills) map
+  // each array index to a different fixed PASSAGE, not a difficulty level --
+  // mastery-weighted selection would wrongly bias which STORY comes up
+  // instead of picking between them evenly, so those stay uniform random.
+  const isPool = !!(SKILLS[subject][skillId] && SKILLS[subject][skillId].pool);
   let q, attempts = 0;
-  do { q = gens[randInt(0, gens.length-1)](); attempts++; }
+  do { q = gens[isPool ? randInt(0, gens.length-1) : pickGeneratorIndex(gens, concept.mastery)](); attempts++; }
   while((usedTexts.has(q.q) || seen.has(q.q)) && attempts < 60);
   usedTexts.add(q.q);
   if(!concept.seenTexts.includes(q.q)) concept.seenTexts.push(q.q);
