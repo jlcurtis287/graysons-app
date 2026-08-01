@@ -2112,7 +2112,18 @@ function buildSkillSession(subject, focusSkillId){
       // a ranking.
       const repairEligible = candidates.filter(id => skillPrereqsReady(subject, id) && skillMastery(subject,id) < 0.8);
       const maintainEligible = candidates.filter(id => skillMastery(subject,id) >= 0.7);
-      const reviewEligible = candidates;
+      // Review = "spaced retrieval across PREVIOUSLY LEARNED concepts" (JC's
+      // spec) — it must never be the bucket that introduces something
+      // foundation-less. Unfiltered `candidates` let a skill whose
+      // prerequisites aren't ready yet (e.g. Perimeter, before Addition is
+      // solid) get pulled in here once the small repair pool was exhausted
+      // for the session — exactly the "starting without a foundation"
+      // problem JC flagged. Gate on both prereq-readiness AND actually
+      // having been attempted before (lastSeenAt set); a skill that's ready
+      // but has never been touched belongs in repair (first exposure), not
+      // review (nothing to retrieve yet).
+      const reviewEligible = candidates.filter(id => skillPrereqsReady(subject, id) &&
+        STATE[subject].skills[id] && STATE[subject].skills[id].lastSeenAt != null);
 
       const repairSoFar = out.filter(q => q.bucket==="repair").length;
       const maintainSoFar = out.filter(q => q.bucket==="maintain").length;
@@ -2131,7 +2142,15 @@ function buildSkillSession(subject, focusSkillId){
       } else if(maintainSoFar < slotsMaintain && maintainEligible.length){
         bucket = "maintain"; pool = maintainEligible;
       } else {
-        bucket = "review"; pool = reviewEligible.length ? reviewEligible : allIds;
+        // Fall back to MORE foundation-ready repair content, never to the
+        // raw unfiltered catalog — on day 1 (nothing has been attempted
+        // yet) reviewEligible is legitimately empty every single session,
+        // and falling back to `allIds` there would silently reintroduce the
+        // exact bug this gate exists to prevent. repairEligible is always
+        // prereq-gated, so it's the safe fallback; allIds is the last
+        // resort only if the graph is somehow fully exhausted.
+        bucket = "review";
+        pool = reviewEligible.length ? reviewEligible : (repairEligible.length ? repairEligible : allIds);
       }
       const scored = pool.map(id => ({id, score: skillPriorityScore(subject, id)}))
                           .sort((a,b)=>b.score-a.score);
