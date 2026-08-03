@@ -1963,19 +1963,36 @@ function skillConfidence(subject, skillId){
   const c = STATE[subject].skills[skillId];
   return c ? c.confidence : 0;
 }
-// A skill's own prerequisites are all solidly there (mastery >= 0.5).
+// A skill's own prerequisites are all solidly there: mastery >= 0.5 AND
+// enough real evidence behind that estimate (confidence >= 0.4, which under
+// confidenceFromAttempts' n/(n+8) curve takes roughly 5-6 real attempts to
+// reach regardless of how many were correct). JC, 2026-08-02: mastery alone
+// let a single lucky answer on a foundational skill "unlock" its harder
+// dependent -- e.g. Division Facts crossed 0.5 mastery off ONE attempt,
+// which immediately made Division with Remainders eligible even though
+// Division Facts itself had barely been practiced under the new atomic
+// model. Requiring real evidence too closes that gap generally, across the
+// whole graph (multiplication -> 2-digit multiplication -> large numbers,
+// rounding chains, fractions, sentence-structure chains, etc.), not just
+// the addition/subtraction case fixed earlier.
 function skillPrereqsReady(subject, skillId){
   const prereqs = (SKILLS[subject][skillId] && SKILLS[subject][skillId].prereqs) || [];
-  return prereqs.every(pId => skillMastery(subject, pId) >= 0.5);
+  return prereqs.every(pId => skillMastery(subject, pId) >= 0.5 && skillConfidence(subject, pId) >= 0.4);
 }
 // Direct dependents currently gated BECAUSE this skill isn't solid yet — a
 // more immediate, concrete signal than the broader descendant count below
 // ("blocks future learning right now" vs "is foundational in general").
+// Must match skillPrereqsReady's own definition of "solid" (mastery AND
+// confidence) -- otherwise a skill gating a dependent purely on thin
+// evidence (high mastery, low confidence) would silently miss the "blocks
+// other skills" priority bonus and dashboard explanation, even though it's
+// the exact thing actually holding up a dependent skill right now.
 function skillBlocksSomethingNow(subject, skillId){
   const skills = SKILLS[subject];
+  const isSolid = skillMastery(subject, skillId) >= 0.5 && skillConfidence(subject, skillId) >= 0.4;
   return Object.keys(skills).some(otherId => {
     const prereqs = skills[otherId].prereqs || [];
-    return prereqs.includes(skillId) && skillMastery(subject, skillId) < 0.5;
+    return prereqs.includes(skillId) && !isSolid;
   });
 }
 // Slope of recent correctness, -1..1: compares the newer half of the last
